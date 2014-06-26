@@ -15,7 +15,7 @@ struct
                               (case Symbol.look(env,s) of
                                   SOME (declaredDepth,declaredEsc) => if declaredDepth < d
                                                                       then declaredEsc := true
-                                                                      else declaredEsc := false
+                                                                      else ()
                                 | NONE => raise Impossible)
           | FieldVar (var,s,_) => () 
           | SubscriptVar (var,e,_) => ()

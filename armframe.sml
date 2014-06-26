@@ -8,7 +8,6 @@ struct
     datatype frag = PROC of {body: Tree.stm, frame: frame}
                   | STRING of Temp.label * string
     val wordSize = 4 (* arm word is 4 bytes *)
-    val k = 4 (* the first k formals go to registers *)
 
     val registers = ["a1","a2","a3","a4","v1","v2","v3","v4",
                      "v5","v6","v7","FP","IP","SP","LR","PC"]
@@ -24,32 +23,37 @@ struct
     val v5 = Temp.newtemp() (* variable register *)
     val v6 = Temp.newtemp() (* variable register  *)
     val v7 = Temp.newtemp() (* variable register *)
-    val FP = Temp.newtemp() (* frame pointer *)
+    val v8 = Temp.newtemp() (* frame pointer *)
     val IP = Temp.newtemp() (* Intra-Procedure-call scratch register *)
     val SP = Temp.newtemp() (* stack pointer *)
     val LR = Temp.newtemp() (* link register *)
     val PC = Temp.newtemp() (* program counter *)
 
     val RV = a1 (* return value *)
-
-    val registerTemps = [a1,a2,a3,a4,v1,v2,v3,v4,
-                         v5,v6,v7,FP,IP,SP,LR,PC]
-
-    val tempMap = List.foldl (fn ((key, value), table) => Temp.Table.enter(table, key, value))
-                             Temp.Table.empty (ListPair.zip(registerTemps, registers))
+    val FP = LR
 
     (* register lists *)
     val argregs = [a1,a2,a3,a4]
-    val callesaves = [v1,v2,v3,v4,v4,v5,v6,v7]
+    val callesaves = [v1,v2,v3,v4,v5,v6,v7,v8,IP]
     val callersaves = [a1,a2,a3,a4]
-    val specialregs = [SP,IP,SP,LR,PC]
+    val specialregs = [SP,LR,PC]
+
+    val K = 4 (* the first k formals go to registers *)
+    val L = length(callesaves) - K (* the remaining registers are used for local variables *)
+
+
+    val registerTemps = [a1,a2,a3,a4,v1,v2,v3,v4,
+                         v5,v6,v7,v8,IP,SP,LR,PC]
+
+    val tempMap = List.foldl (fn ((key, value), table) => Temp.Table.enter(table, key, value))
+                             Temp.Table.empty (ListPair.zip(registerTemps, registers))
 
     fun newFrame {name : Temp.label, formals : bool list} =
         let fun formalsiter (fs,offset,counter) =
 	       case fs of
 	           f::fs => (case f of
 		                     true => InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter)
-			               | false => if counter > k
+			               | false => if counter > K
 			                          then InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter+1)
 					                  else InReg (Temp.newtemp()) :: formalsiter(fs,offset,counter+1))
              | nil => nil
@@ -61,18 +65,11 @@ struct
     
     fun formals {formals = f, name=_, locals=_} = f
 
-    fun allocLocal frame var =
-        let fun accessize (f,offset) =
-	        case f of
-		    true => InFrame (offset * wordSize)
-		  | false => InReg (Temp.newtemp())
-        in
-            case frame of
-	        {name =_, formals =_, locals = l} => let val l' =  ~(!l) (* in case of escaping locals goes to lower addresses *)
-	                                                 val res = accessize(var, l'-1)
-	                                                 val _ = l := !l+1
-	        	                              in res end
-	end
+    fun allocLocal {name =_, formals =_, locals = l} var =
+    (* in case of escaping locals goes to lower addresses *)
+	        case var of
+                false => InReg (Temp.newtemp())
+              | true => (l := !l+1; InFrame (~(!l) * wordSize))
 
     fun exp facc fp =
         case facc of

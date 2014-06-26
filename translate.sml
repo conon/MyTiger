@@ -182,6 +182,7 @@ fun createArray (size,init) =
     Ex (Frame.externalCall("initArray",[unEx size,unEx init]))
 
 fun callExp (s,l,args) =
+    (*TODO: check *)
     let (*val facc = getStaticLink(l)
         val sl = Frame.exp facc (T.TEMP Frame.FP)
         val args = Ex(sl)::args*)
@@ -232,6 +233,7 @@ fun forExp (lo, hi, body, ldone) =
     end
 
 fun procEntryExit {level=lev, body=exp} =
+    (* TODO: check *)
     case lev of
         Level (fr,_,_) => frags := Frame.PROC{body=unNx(exp), frame=fr} :: (!frags)
       | _ => raise ErrorAlloc
