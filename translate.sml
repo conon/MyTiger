@@ -84,7 +84,7 @@ fun getStaticLink lev =
 
 fun makeExps (explst,exp) =
     let fun iter (exp'::exps') =
-            T.SEQ(T.EXP(unEx exp'), iter(exps'))
+            T.SEQ(unNx exp', iter(exps'))
           | iter nil =
             unNx exp
     in Nx (iter(explst)) end

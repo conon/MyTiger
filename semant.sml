@@ -105,7 +105,7 @@ fun transProg ast =
 
 	(* Declares a variable with short form, the type of variable is determined from the type of the expression. *)
         and transDec (venv, tenv, A.VarDec{name, escape, typ=NONE, init, pos}, lev, expslist, breaklabel) =
-            let val {exp = e, ty = expty} = transExp(venv, tenv, init, lev, breaklabel)
+            let val {exp = e, ty = expty} = transExp(venv, tenv, init, lev, breaklabel, expslist)
             in
                 if checkNil expty
                 then (error pos "expression returns nil type: use the long form";
@@ -115,12 +115,13 @@ fun transProg ast =
 		      ({tenv=tenv, venv=venv},lev,expslist) )
 	        else let val acc = Tr.allocLocal lev (!escape)
 		         val venv' = Symbol.enter(venv, name, Env.VarEntry{access = acc, ty = expty})
-	             in ({tenv = tenv, venv = venv'}, lev, expslist@[e]) end
+                 val var = Tr.assign(Tr.simpleVar(acc,lev),e)
+	             in ({tenv = tenv, venv = venv'}, lev, expslist@[var]) end
             end
           (* Declares a variable with long form, the type given should match the type of the expression,
                and should be in the types enviroment *)
           | transDec (venv, tenv, A.VarDec{name, escape, typ=SOME(id,posId), init, pos}, lev, expslist, breaklabel) =
-            let val {exp = e, ty = ty} = transExp(venv, tenv, init, lev, breaklabel)
+            let val {exp = e, ty = ty} = transExp(venv, tenv, init, lev, breaklabel, expslist)
                 val ty_exp = ty (* the ty's field name, of the expression, conflicts with the VarEntry's field name *)
             in
                 (case Symbol.look(tenv, id) of
@@ -130,7 +131,8 @@ fun transProg ast =
 			 if checkEqual(aty, ty_exp)
 			 then let val acc = Tr.allocLocal lev (!escape)
 			          val venv' = Symbol.enter(venv, name, Env.VarEntry{access = acc, ty = aty})
-			      in ({tenv = tenv, venv = venv'},lev,expslist@[e]) end
+                      val var = Tr.assign(Tr.simpleVar(acc,lev),e)
+			      in ({tenv = tenv, venv = venv'},lev,expslist@[var]) end
 			 else (error posId "type specifier does not much expression type";
 			       ({tenv = tenv, venv = venv},lev,expslist))
 		     end
@@ -246,7 +248,7 @@ fun transProg ast =
 		    let val accesslst = Tr.formals lev
 		        val pa = ListPair.zip(params',accesslst)
 		        val venv'' = foldl enterpar venv' pa
-		        val {exp = funbody, ty = expty} = transExp(venv'', tenv, body, lev, breaklabel)
+		        val {exp = funbody, ty = expty} = transExp(venv'', tenv, body, lev, breaklabel, expslist)
 		    in
 			if actual_ty resulty = expty
 		        then Tr.procEntryExit {level=lev, body=funbody}
@@ -261,7 +263,7 @@ fun transProg ast =
 	    end
 
 	(* transExp : venv * tenv -> expty *)
-	and transExp(venv, tenv, init, lev, breaklabel) =
+	and transExp(venv, tenv, init, lev, breaklabel, expslist) =
             (* trexp : Absyn.exp -> expty *)
 	    let fun trexp (A.IntExp i) =
 		    {exp = Tr.constIntVar i, ty = Types.INT}
@@ -403,7 +405,7 @@ fun transProg ast =
 		    let val {exp=et, ty = test'} = trexp(test)
 		        val breaklabel' = Tr.initLoop
 		        val {exp=eb, ty = body'} = (nested := !nested + 1; 
-			                           transExp(venv, tenv, body, lev, breaklabel'))
+			                           transExp(venv, tenv, body, lev, breaklabel',expslist))
 	            in
 		        (nested := !nested - 1;
                          if checkInt(test')
@@ -415,9 +417,8 @@ fun transProg ast =
                   | trexp (A.ForExp{var, escape, lo, hi, body, pos}) =
 		    let val {exp=ehi, ty = hi'} = trexp(hi) 
 		        val ({venv = venv', tenv = tenv'},_,expslist) = transDec(venv, tenv,
-		                                                                 A.VarDec{name = var, escape = ref false,
-											  typ = NONE, init = lo, pos = pos},
-									         lev,nil,breaklabel)
+		                                                            A.VarDec{name = var, escape = ref false,
+                                                            typ = NONE, init = lo, pos = pos},lev,nil,breaklabel)
                 val (acc,lo') = case Symbol.look(venv', var) of
                                             SOME (Env.VarEntry({access = acc, ty = lo'})) => (acc,lo')
                                           | _ => raise Impossible
@@ -428,7 +429,7 @@ fun transProg ast =
 			if checkInts(lo',hi')
                         then let val breaklabel' = Tr.initLoop
 			         val {exp=ebody, ty = body'} = (nested := !nested + 1;
-				                            transExp(venv', tenv', body, lev, breaklabel'))
+				                            transExp(venv', tenv', body, lev, breaklabel',expslist))
 			     in
 				 (nested := !nested - 1;
 				  if checkUnit body'
@@ -439,7 +440,7 @@ fun transProg ast =
 		    end
 	          | trexp (A.LetExp{decs, body, pos}) =
                     let val ({venv=venv', tenv=tenv'},lev',expslist) = transDecs(venv, tenv, decs, lev, nil, breaklabel)
-                        val {exp=e,ty=ty} = transExp(venv', tenv', body, lev', breaklabel)
+                        val {exp=e,ty=ty} = transExp(venv', tenv', body, lev', breaklabel,expslist)
                         val e' = Tr.makeExps(expslist, e)
 		        (* TODO: do something with expslist *)
                     in
@@ -507,7 +508,7 @@ fun transProg ast =
     in
         let val startLevel = Tr.newLevel {parent=Tr.outermost, name=Temp.newlabel(), formals=nil}
 	    val breaklabel = Tr.initLoop
-	    val {exp=e,ty=_} = transExp(Env.base_venv, Env.base_tenv, ast, startLevel, breaklabel)
+	    val {exp=e,ty=_} = transExp(Env.base_venv, Env.base_tenv, ast, startLevel, breaklabel, nil)
 	    val _ = Tr.procEntryExit{level=startLevel, body=e}
 	in 
 	    (*(Tr.printTree e;*)Tr.getResult()
