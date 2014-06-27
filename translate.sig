@@ -15,6 +15,8 @@ sig
     val dummy : exp (* a dummy val to make compilation work *)
     val getResult : unit -> Frame.frag list
 
+    val makeExps : exp list * exp -> exp
+
     val constIntVar : int -> exp
     val nilVar : unit -> exp
     val strVar : string -> exp 
@@ -31,7 +33,7 @@ sig
     val breakLoop : exp -> exp (* returns the done label exp *)
     val initLoop : exp (* the done label *)
     val whileExp : exp * exp * exp -> exp (*exp1:test cond, exp2:body exp, exp3: done label*)
-    val forExp :  exp * exp * exp * exp -> exp (*exp1:lo,exp2:hi,exp3:body,exp4:done label*)
+    val forExp : exp * exp * exp * exp * exp -> exp (*exp0:var,exp1:lo,exp2:hi,exp3:body,exp4:done label*)
 
     val procEntryExit : {level: level, body: exp} -> unit
 

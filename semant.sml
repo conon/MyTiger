@@ -415,14 +415,15 @@ fun transProg ast =
                   | trexp (A.ForExp{var, escape, lo, hi, body, pos}) =
 		    let val {exp=ehi, ty = hi'} = trexp(hi) 
 		        val ({venv = venv', tenv = tenv'},_,expslist) = transDec(venv, tenv,
-		                                                                 A.VarDec{name = var, escape = ref true,
+		                                                                 A.VarDec{name = var, escape = ref false,
 											  typ = NONE, init = lo, pos = pos},
 									         lev,nil,breaklabel)
-                        val (acc,lo') = case Symbol.look(venv', var) of
+                val (acc,lo') = case Symbol.look(venv', var) of
                                             SOME (Env.VarEntry({access = acc, ty = lo'})) => (acc,lo')
                                           | _ => raise Impossible
                                                              
-                        val elo = Tr.assign(Tr.simpleVar(acc, lev), hd expslist)
+                val var = Tr.simpleVar(acc, lev)
+                val elo = hd expslist
 		    in
 			if checkInts(lo',hi')
                         then let val breaklabel' = Tr.initLoop
@@ -431,16 +432,18 @@ fun transProg ast =
 			     in
 				 (nested := !nested - 1;
 				  if checkUnit body'
-				  then {exp=Tr.forExp(elo, ehi, ebody, breaklabel'), ty = Types.UNIT}
+				  then {exp=Tr.forExp(var, elo, ehi, ebody, breaklabel'), ty = Types.UNIT}
 				  else (error pos "for expression should produce no value"; {exp=Tr.dummy, ty = Types.UNIT}))
 			     end
 			else (error pos "lower and upper bounds should be integers"; {exp=Tr.dummy, ty = Types.UNIT})
 		    end
 	          | trexp (A.LetExp{decs, body, pos}) =
                     let val ({venv=venv', tenv=tenv'},lev',expslist) = transDecs(venv, tenv, decs, lev, nil, breaklabel)
+                        val {exp=e,ty=ty} = transExp(venv', tenv', body, lev', breaklabel)
+                        val e' = Tr.makeExps(expslist, e)
 		        (* TODO: do something with expslist *)
                     in
-                        transExp(venv', tenv', body, lev', breaklabel)
+                        {exp=e',ty=ty}
                     end
 			
 		  | trexp (A.OpExp{left, oper, right, pos}) =

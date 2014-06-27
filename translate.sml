@@ -82,11 +82,17 @@ fun getStaticLink lev =
 	                  in fracc end
       | StartLevel => raise ErrorAlloc
 
+fun makeExps (explst,exp) =
+    let fun iter (exp'::exps') =
+            T.SEQ(T.EXP(unEx exp'), iter(exps'))
+          | iter nil =
+            unNx exp
+    in Nx (iter(explst)) end
+
 fun constIntVar i =
     Ex (T.CONST i)
 
 fun simpleVar (access, currentlevel) =
-(* TODO: check *)
     let val (varlevel,varframeaccess) = access
         val varunique = case varlevel of 
                             Level(_,_,unique) => unique
@@ -100,9 +106,6 @@ fun simpleVar (access, currentlevel) =
 	          | StartLevel => raise ErrorAlloc
         val afp = calcfraddr currentlevel
         in Ex (Frame.exp varframeaccess afp) end
-		     (* FIXME: changing the const to 0 because sl should be on the first offset
-		               The static link seems to work properly. What goes wrong is formal values'
-			       starting offset, should be 4 bytes higher to due to static link*)
 
 fun nilVar () =
     Ex (T.MEM (T.CONST 0))
@@ -217,19 +220,22 @@ fun whileExp (test,body,ldone) =
 
     end
 
-fun forExp (lo, hi, body, ldone) =
+fun forExp (var, lo, hi, body, ldone) =
     let val lbody = Temp.newlabel()
 	    val ldone' = case (unNx ldone) of T.LABEL n => n 
 	                                    | _ => raise ErrorAlloc
+        val limit = Temp.newtemp()
+        val var' = unEx var
     in
-    (* TODO : check again *)
-    Nx (
-	T.SEQ(T.CJUMP(T.LE, unEx lo, unEx hi, lbody, ldone'),
-	T.SEQ(T.LABEL lbody,
-	T.SEQ(unNx body,
-	T.SEQ(T.MOVE(unEx lo, T.BINOP(T.PLUS, unEx lo, T.CONST 1)),
-	T.SEQ(T.CJUMP(T.LT, unEx lo, unEx hi, lbody, ldone'),
-          T.LABEL ldone'))))))
+        Nx (
+        T.SEQ(T.MOVE(var', unEx lo),
+        T.SEQ(T.MOVE(T.TEMP limit,unEx hi),
+        T.SEQ(T.CJUMP(T.LE,var',T.TEMP limit,lbody,ldone'),
+        T.SEQ(T.LABEL lbody,
+        T.SEQ(unNx body,
+        T.SEQ(T.MOVE(var',T.BINOP(T.PLUS,var',T.CONST 1)),
+        T.SEQ(T.CJUMP(T.LE,var',T.TEMP limit,lbody,ldone'),
+              T.LABEL ldone'))))))))
     end
 
 fun procEntryExit {level=lev, body=exp} =
