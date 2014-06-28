@@ -1,6 +1,7 @@
 structure ArmFrame : FRAME =
 struct
     structure A = Assem
+    structure T = Tree
     type register = string
     datatype access = InFrame of int
                     | InReg of Temp.temp
@@ -30,6 +31,7 @@ struct
     val PC = Temp.newtemp() (* program counter *)
 
     val RV = a1 (* return value *)
+    val SC = v1 (* save calle register*)
     val FP = LR
 
     (* register lists *)
@@ -73,7 +75,7 @@ struct
 
     fun exp facc fp =
         case facc of
-            InFrame k => (print "INFRAME\n";Tree.MEM(Tree.BINOP(Tree.PLUS, fp, Tree.CONST k)))
+            InFrame k => (print "INFRAME\n";Tree.BINOP(Tree.PLUS, fp, Tree.CONST k))
           | InReg t => (print "INREG\n";Tree.TEMP t)
 
     fun externalCall (s,args) =
@@ -85,7 +87,21 @@ struct
         exp
       | makeseq (exp::exps) = Tree.SEQ(exp,(makeseq exps))
     
-    fun procEntryExit1 (frame,body) =  body (* TODO: dummy *) 
+    fun procEntryExit1 (frame,body) =
+        let fun savecalle (reg::nil,offset) =
+                T.EXP(T.TEMP reg)
+              | savecalle (reg::regs,offset) =
+                T.SEQ(T.MOVE(T.TEMP SP,T.BINOP(T.PLUS,T.CONST (offset*wordSize),T.TEMP reg)),savecalle(regs,offset+1))
+            fun restorecalle (reg::nil,offset) =
+                T.EXP(T.TEMP reg)
+              | restorecalle (reg::regs,offset) =
+                T.SEQ(T.MOVE(T.TEMP reg,T.BINOP(T.PLUS,T.CONST (offset*wordSize),T.TEMP SP)),
+                      restorecalle(regs,offset+1))
+        in
+            T.SEQ(savecalle(callesaves,0),    (* save all calle-saved registers to the stack *)
+            T.SEQ(T.MOVE(T.TEMP RV,body),      (* Evaluate body and store the result to the Return Value register *)
+                  restorecalle(callesaves,0)))(* restore calle-saves registers *)
+        end
 
     fun string (lab,s) = "" (* TODO: dummy *)
 
