@@ -1,11 +1,9 @@
 structure FindEscape :
 sig
     val findEscape : Absyn.exp -> unit
-    exception Impossible
 end =
 struct
     open Absyn
-    exception Impossible
     type depth = int
     type escEnv = (depth * bool ref) Symbol.table
 
@@ -16,7 +14,8 @@ struct
                                   SOME (declaredDepth,declaredEsc) => if declaredDepth < d
                                                                       then declaredEsc := true
                                                                       else ()
-                                | NONE => raise Impossible)
+                                | NONE => ()) (* suppress any errors on findescape analysis,
+                                                 such errors will be catch be the type-checker *)
           | FieldVar (var,s,_) => () 
           | SubscriptVar (var,e,_) => ()
     and traverseExp(env:escEnv, d:depth, s:Absyn.exp) : unit =

@@ -179,7 +179,7 @@ fun createRecord (fexps,n) =
 	    end
 	val r = Temp.newtemp()
 	val cr = Frame.externalCall("initRecord",[T.CONST n])
-    in Nx (T.SEQ(T.MOVE(T.TEMP r,cr), placeFields(fexps,T.TEMP r))) end
+    in Ex (T.ESEQ(T.SEQ(T.MOVE(T.TEMP r,cr), placeFields(fexps,T.TEMP r)),T.TEMP r)) end
 
 fun createArray (size,init) =
     Ex (Frame.externalCall("initArray",[unEx size,unEx init]))
