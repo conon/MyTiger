@@ -89,6 +89,15 @@ fun makeExps (explst,exp) =
             unNx exp
     in Nx (iter(explst)) end
 
+fun makeExp explst =
+    let fun iter (exp::nil) =
+            unNx exp
+          | iter (exp::exps) =
+            T.SEQ(unNx exp, iter(exps))
+          | iter nil =
+            T.EXP(T.CONST 0)
+    in Nx (iter(explst)) end
+         
 fun constIntVar i =
     Ex (T.CONST i)
 
@@ -116,11 +125,11 @@ fun strVar str =
     in Ex (T.NAME(lab)) end
 
 fun subScriptVar (a,i) =
-    Ex (T.MEM(T.BINOP(T.PLUS, T.MEM(unEx(a)),T.BINOP(T.MUL, (unEx i), T.CONST Frame.wordSize))))
+    Ex (T.MEM(T.BINOP(T.PLUS, unEx(a),T.BINOP(T.MUL, (unEx i), T.CONST Frame.wordSize))))
 (* mul by wordsize because all tiger values have the same size and minus 1 to get zero based offset *)
 
 fun fieldVar (a,i) =
-    Ex (T.MEM(T.BINOP(T.PLUS, T.MEM(unEx(a)),T.BINOP(T.MUL, T.CONST i, T.CONST Frame.wordSize))))
+    Ex (T.MEM(T.BINOP(T.PLUS, unEx(a),T.BINOP(T.MUL, T.CONST i, T.CONST Frame.wordSize))))
        
 fun opExp (oper,expl,expr) =
     let val expl' = unEx(expl)
@@ -147,7 +156,7 @@ fun cond1Exp (e1,e2) =
 	Nx (
         T.SEQ(unCx e1(t,f),
 	    T.SEQ(T.LABEL t,
-	    T.SEQ(T.EXP(unEx e2),
+	    T.SEQ(T.MOVE(T.TEMP r, unEx e2),
 	          T.LABEL f))))
     end
 
@@ -158,11 +167,9 @@ fun cond2Exp (e1,e2,e3) =
         Nx (
         T.SEQ(unCx e1(t,f),
 	    T.SEQ(T.LABEL t,
-	    T.SEQ(T.EXP(unEx e2),
-        T.SEQ(T.JUMP (T.NAME fin, [fin]),
+	    T.SEQ(T.MOVE(T.TEMP r, unEx e2),
 	    T.SEQ(T.LABEL f,
-	    T.SEQ(T.EXP(unEx e3),
-              T.LABEL fin)))))))
+	          T.MOVE(T.TEMP r, unEx e3))))))
     end
 	
 fun createRecord (fexps,n) =
@@ -212,11 +219,12 @@ fun whileExp (test,body,ldone) =
 	val ldone' = case (unNx ldone) of T.LABEL n => n
 	                 | _ => raise ErrorAlloc
     in
-        Nx (T.SEQ(unCx test(lbody,ldone'),
+        Nx (T.SEQ(T.LABEL ltest,
+            T.SEQ(unCx test(lbody,ldone'),
             T.SEQ(T.LABEL lbody,
             T.SEQ(T.EXP (unEx body),
-            T.SEQ(T.JUMP (T.NAME lbody,[lbody]),
-                  T.LABEL ldone')))))
+            T.SEQ(T.JUMP (T.NAME ltest,[ltest]),
+                  T.LABEL ldone'))))))
 
     end
 

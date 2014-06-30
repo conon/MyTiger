@@ -1,3 +1,4 @@
+(* Noelia *)
 structure Semant : sig 
     val transProg : Absyn.exp -> Frame.frag list end =
 struct
@@ -278,13 +279,17 @@ fun transProg ast =
 		    then {exp=Tr.breakLoop breaklabel, ty = Types.UNIT}
 		    else (error pos "break should be inside while or for";
                           {exp=Tr.dummy, ty = Types.UNIT})
-                  | trexp (A.SeqExp ((exp,pos)::nil)) =
-                    trexp(exp)
-                  | trexp (A.SeqExp ((exp,pos)::rest)) = (* the type of seqexp is that of last expression *)
-                    (trexp(exp);
-                     (trexp(A.SeqExp rest)))
-                  | trexp (A.SeqExp nil) =
-                    {exp=Tr.dummy, ty = Types.UNIT}
+                  | trexp (A.SeqExp seqs) =
+                    let fun makeTree ((exp,_),lst) =
+                        trexp(exp)::lst
+                        val tr = foldr makeTree nil seqs
+                        fun canonicalize ({exp=e,ty=t},lst) =
+                            e::lst
+                        val trcan = foldr canonicalize nil tr
+                        val tree = Tr.makeExp trcan
+                        val {exp=_,ty=lastType} = List.last tr handle Empty => {exp=Tr.dummy, ty=Types.UNIT}
+                    in {exp=tree,ty=lastType} end
+                        
                   | trexp (A.AssignExp{var, exp, pos}) =
                     let val {exp=lval,ty= trty} = trvar(var,lev)
                         val {exp=rval,ty= expty} = trexp(exp)
@@ -442,7 +447,6 @@ fun transProg ast =
                     let val ({venv=venv', tenv=tenv'},lev',expslist) = transDecs(venv, tenv, decs, lev, nil, breaklabel)
                         val {exp=e,ty=ty} = transExp(venv', tenv', body, lev', breaklabel,expslist)
                         val e' = Tr.makeExps(expslist, e)
-		        (* TODO: do something with expslist *)
                     in
                         {exp=e',ty=ty}
                     end

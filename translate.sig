@@ -16,6 +16,7 @@ sig
     val getResult : unit -> Frame.frag list
 
     val makeExps : exp list * exp -> exp
+    val makeExp : exp list -> exp
 
     val constIntVar : int -> exp
     val nilVar : unit -> exp
