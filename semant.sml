@@ -425,10 +425,11 @@ fun transProg ast =
 		                                                            A.VarDec{name = var, escape = ref false,
                                                             typ = NONE, init = lo, pos = pos},lev,nil,breaklabel)
                 val (acc,lo') = case Symbol.look(venv', var) of
-                                            SOME (Env.VarEntry({access = acc, ty = lo'})) => (acc,lo')
-                                          | _ => raise Impossible
+                                    SOME (Env.VarEntry({access = acc, ty = lo'})) => (acc,lo')
+                                  | _ => raise Impossible
                                                              
                 val var = Tr.simpleVar(acc, lev)
+                (* elo contains an assign tree due to evaluation in varDec *)
                 val elo = hd expslist
 		    in
 			if checkInts(lo',hi')

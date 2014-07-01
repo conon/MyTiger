@@ -236,7 +236,7 @@ fun forExp (var, lo, hi, body, ldone) =
         val var' = unEx var
     in
         Nx (
-        T.SEQ(T.MOVE(var', unEx lo),
+        T.SEQ(unNx lo,
         T.SEQ(T.MOVE(T.TEMP limit,unEx hi),
         T.SEQ(T.CJUMP(T.LE,var',T.TEMP limit,lbody,ldone'),
         T.SEQ(T.LABEL lbody,
