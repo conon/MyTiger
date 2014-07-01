@@ -156,7 +156,7 @@ fun cond1Exp (e1,e2) =
 	Nx (
         T.SEQ(unCx e1(t,f),
 	    T.SEQ(T.LABEL t,
-	    T.SEQ(T.MOVE(T.TEMP r, unEx e2),
+	    T.SEQ(T.EXP(unEx e2),
 	          T.LABEL f))))
     end
 
@@ -168,8 +168,11 @@ fun cond2Exp (e1,e2,e3) =
         T.SEQ(unCx e1(t,f),
 	    T.SEQ(T.LABEL t,
 	    T.SEQ(T.MOVE(T.TEMP r, unEx e2),
+        T.SEQ(T.JUMP(T.NAME fin,[fin]), 
 	    T.SEQ(T.LABEL f,
-	          T.MOVE(T.TEMP r, unEx e3))))))
+	    T.SEQ(T.MOVE(T.TEMP r, unEx e3),
+        T.SEQ(T.JUMP(T.NAME fin,[fin]), 
+              T.LABEL fin))))))))
     end
 	
 fun createRecord (fexps,n) =
