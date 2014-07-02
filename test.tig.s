@@ -1,8 +1,0 @@
-EXP(
- BINOP(PLUS,
-  TEMP t116,
-  TEMP t117))
-EXP(
- BINOP(PLUS,
-  TEMP t118,
-  TEMP t119))

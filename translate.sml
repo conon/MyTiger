@@ -4,6 +4,9 @@ structure A = Absyn
 structure T = Tree
 
 exception ErrorAlloc 
+exception CxToNx 
+exception StartLevelExc
+exception LabelCaseExc
 
 datatype level = Level of Frame.frame * level * unit ref (* Actual frame, the parent frame, every new level is unique *)
        | StartLevel
@@ -45,7 +48,7 @@ fun unCx (Cx c) = c
   | unCx (Ex (T.CONST 0)) = (fn (t,f) => T.JUMP(T.NAME f, [f]))
   | unCx (Ex (T.CONST 1)) = (fn (t,f) => T.JUMP(T.NAME t, [t]))
   | unCx (Ex e) = (fn (t,f) => T.CJUMP(T.NE, e, T.CONST 0, t, f))
-  | unCx (Nx _) = raise ErrorAlloc
+  | unCx (Nx _) = raise CxToNx
 
 fun printTree exp =
     Printtree.printtree (TextIO.stdOut,unNx(exp))
@@ -68,7 +71,7 @@ fun formals lev =
                                  (lev,fracc)
                              val acc = map aux fracc
                          in List.drop (acc,0) end (* drop the static link *)
-      | StartLevel => raise ErrorAlloc
+      | StartLevel => raise StartLevelExc
 
 fun allocLocal lev esc =
     let val fracc = case lev of
@@ -105,14 +108,14 @@ fun simpleVar (access, currentlevel) =
     let val (varlevel,varframeaccess) = access
         val varunique = case varlevel of 
                             Level(_,_,unique) => unique
-                          | StartLevel => raise ErrorAlloc
+                          | StartLevel => raise StartLevelExc
         fun calcfraddr level =
             case level of
                 Level(currentframe,currentparentlevel,currentunique) =>
                     if varunique = currentunique
                     then T.TEMP(Frame.FP)
                     else T.MEM(calcfraddr(currentparentlevel))
-	          | StartLevel => raise ErrorAlloc
+	          | StartLevel => raise StartLevelExc
         val afp = calcfraddr currentlevel
         in Ex (Frame.exp varframeaccess afp) end
 
@@ -194,7 +197,7 @@ fun createRecord (fexps,n) =
 fun createArray (size,init) =
     Ex (Frame.externalCall("initArray",[unEx size,unEx init]))
 
-fun callExp (s,l,args) =
+fun callFunction (s,l,args) =
     (*TODO: check *)
     let (*val facc = getStaticLink(l)
         val sl = Frame.exp facc (T.TEMP Frame.FP)
@@ -213,14 +216,14 @@ fun breakLoop b =
     let val l = unNx b
     in 
         case l of T.LABEL n => Nx (T.JUMP (T.NAME n,[n]))
-       | _ => raise ErrorAlloc
+       | _ => raise LabelCaseExc
     end
 
 fun whileExp (test,body,ldone) =
     let val ltest = Temp.newlabel()
         val lbody = Temp.newlabel()
 	val ldone' = case (unNx ldone) of T.LABEL n => n
-	                 | _ => raise ErrorAlloc
+	                 | _ => raise LabelCaseExc
     in
         Nx (T.SEQ(T.LABEL ltest,
             T.SEQ(unCx test(lbody,ldone'),
@@ -234,7 +237,7 @@ fun whileExp (test,body,ldone) =
 fun forExp (var, lo, hi, body, ldone) =
     let val lbody = Temp.newlabel()
 	    val ldone' = case (unNx ldone) of T.LABEL n => n 
-	                                    | _ => raise ErrorAlloc
+	                                    | _ => raise LabelCaseExc
         val limit = Temp.newtemp()
         val var' = unEx var
     in
@@ -253,5 +256,5 @@ fun procEntryExit {level=lev, body=exp} =
     (* TODO: check *)
     case lev of
         Level (fr,_,_) => frags := Frame.PROC{body=unNx(exp), frame=fr} :: (!frags)
-      | _ => raise ErrorAlloc
+      | _ => raise StartLevelExc
     end

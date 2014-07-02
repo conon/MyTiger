@@ -319,8 +319,8 @@ fun transProg ast =
 			         if !anyErrors
 				 then {exp=Tr.dummy, ty = Types.UNIT}
 				 else if result = Types.UNIT
-				 then {exp=Tr.callExp(Symbol.name func,lev,res), ty = Types.UNIT}
-				 else {exp=Tr.callExp(Symbol.name func,lev,res), ty = result}
+				 then {exp=Tr.callFunction(Symbol.name func,lev,res), ty = Types.UNIT}
+				 else {exp=Tr.callFunction(Symbol.name func,lev,res), ty = result}
 			     end
 			   | SOME (Env.VarEntry{access=_, ty=ty}) => (error pos ("identifier " ^ Symbol.name func ^
   										 " is bound to a variable");
