@@ -167,7 +167,8 @@ fun cond2Exp (e1,e2,e3) =
     let val r = Temp.newtemp()
         val t = Temp.newlabel() and f = Temp.newlabel() and fin = Temp.newlabel()
     in  
-        Nx (
+        Ex (
+        T.ESEQ(
         T.SEQ(unCx e1(t,f),
 	    T.SEQ(T.LABEL t,
 	    T.SEQ(T.MOVE(T.TEMP r, unEx e2),
@@ -175,7 +176,7 @@ fun cond2Exp (e1,e2,e3) =
 	    T.SEQ(T.LABEL f,
 	    T.SEQ(T.MOVE(T.TEMP r, unEx e3),
         T.SEQ(T.JUMP(T.NAME fin,[fin]), 
-              T.LABEL fin))))))))
+              T.LABEL fin))))))), T.TEMP r))
     end
 	
 fun createRecord (fexps,n) =

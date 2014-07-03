@@ -516,7 +516,7 @@ fun transProg ast =
 	    val {exp=e,ty=_} = transExp(Env.base_venv, Env.base_tenv, ast, startLevel, breaklabel, nil)
 	    val _ = Tr.procEntryExit{level=startLevel, body=e}
 	in 
-	    (*(Tr.printTree e;*)Tr.getResult()
+	    (*Tr.printTree e;*)Tr.getResult()
 	end
     end
 end
