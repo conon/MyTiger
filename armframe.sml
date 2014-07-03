@@ -103,6 +103,11 @@ struct
                   restorecalle(callesaves,0)))(* restore calle-saves registers *)
         end
 
+    fun procEntryExit2(frame,body) =
+        body @ [A.OPER{assem="", src=specialregs@callesaves, dst=[], jump=SOME []}]
+        
+
+
     fun string (lab,s) = "" (* TODO: dummy *)
 
     (*
