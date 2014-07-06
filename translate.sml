@@ -100,6 +100,9 @@ fun makeExp explst =
           | iter nil =
             T.EXP(T.CONST 0)
     in Nx (iter(explst)) end
+
+fun concatExps (s,e) =
+    Ex (T.ESEQ(unNx s,unEx e))
          
 fun constIntVar i =
     Ex (T.CONST i)

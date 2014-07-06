@@ -17,6 +17,7 @@ sig
 
     val makeExps : exp list * exp -> exp
     val makeExp : exp list -> exp
+    val concatExps : exp * exp -> exp
 
     val constIntVar : int -> exp
     val nilVar : unit -> exp

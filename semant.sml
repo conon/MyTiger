@@ -5,7 +5,7 @@ struct
 
 structure A = Absyn
 structure Tr = Translate 
-exception Impossible
+exception ForUndefined
 val error = ErrorMsg.error
 val anyErrors = ErrorMsg.anyErrors
 
@@ -426,7 +426,7 @@ fun transProg ast =
                                                             typ = NONE, init = lo, pos = pos},lev,nil,breaklabel)
                 val (acc,lo') = case Symbol.look(venv', var) of
                                     SOME (Env.VarEntry({access = acc, ty = lo'})) => (acc,lo')
-                                  | _ => raise Impossible
+                                  | _ => raise ForUndefined
                                                              
                 val var = Tr.simpleVar(acc, lev)
                 (* elo contains an assign tree due to evaluation in varDec *)
@@ -447,7 +447,8 @@ fun transProg ast =
 	          | trexp (A.LetExp{decs, body, pos}) =
                     let val ({venv=venv', tenv=tenv'},lev',expslist) = transDecs(venv, tenv, decs, lev, nil, breaklabel)
                         val {exp=e,ty=ty} = transExp(venv', tenv', body, lev', breaklabel,expslist)
-                        val e' = Tr.makeExps(expslist, e)
+                        val exps = Tr.makeExp(expslist)
+                        val e' = Tr.concatExps(exps,e)
                     in
                         {exp=e',ty=ty}
                     end

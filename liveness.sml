@@ -11,6 +11,9 @@ sig
     val liveness : Flow.flowgraph -> Flow.Graph.node -> Temp.temp list (* node(block) -> live-out temps *)
 
     val show : TextIO.outstream * igraph -> unit
+
+    val printliveouts : TextIO.outstream * Flow.Graph.node list * (Flow.Graph.node -> Temp.temp list)  -> unit
+    val printNodes : TextIO.outstream * Flow.flowgraph -> unit
 end =
 struct
     structure IGraph = Flow.Graph
@@ -25,6 +28,11 @@ struct
 		   gtemp : IGraph.node -> Temp.temp,
 		   moves : (IGraph.node * IGraph.node) list}
 
+    (* for debug *)
+    fun printSet set =
+        (Set.app (fn t => (print ((Int.toString t) ^ "\n"))) set;
+        print "\n")
+
     fun livenessalgo (nodelist,usetable,deftable) =
         let fun init (node,(intable,outtable,in'table,out'table)) =
 	            (IGraph.Table.enter(intable,node,Set.empty), 
@@ -38,16 +46,20 @@ struct
 		let val inset = case IGraph.Table.look(intableset,node) of
 				    SOME inset => inset
 				  | NONE => raise Impossible
-		    val outset = case IGraph.Table.look(intableset,node) of
+		    val outset = case IGraph.Table.look(outtableset,node) of
 				     SOME outset => outset
 				   | NONE => raise Impossible
-		    val in'set = case IGraph.Table.look(intableset,node) of
+		    val in'set = case IGraph.Table.look(in'tableset,node) of
 				     SOME in'set => in'set
 				   | NONE => raise Impossible
-		    val out'set = case IGraph.Table.look(intableset,node) of
+		    val out'set = case IGraph.Table.look(out'tableset,node) of
 				    SOME out'set => out'set
 				  | NONE => raise Impossible
 		in 
+            (*print "infinish:\n";printSet inset;TextIO.flushOut(TextIO.stdOut);
+            print "outfinish:\n";printSet outset;TextIO.flushOut(TextIO.stdOut);
+            print "in'finish:\n";printSet in'set;TextIO.flushOut(TextIO.stdOut);
+            print "out'finish:\n";printSet out'set;TextIO.flushOut(TextIO.stdOut);*)
 		    if Set.equal(inset,in'set) andalso Set.equal(outset,out'set) 
 		    then finish(intableset,outtableset,in'tableset,out'tableset,nodes)
 		    else false
@@ -55,27 +67,38 @@ struct
 	      | finish (intableset,outtableset,in'tableset,out'tableset,nil) =
 		true
 
-	    fun iteration (node,(intablesets,outtablesets,in''tablesets,out''tablesets)) = 
+	    fun iteration (intablesets,outtablesets,in''tablesets,out''tablesets,node::nodes) = 
 	        let val use = (case Flow.Graph.Table.look(usetable,node) of
 		                  SOME uselist => Set.fromList(List.concat(uselist))
-				| NONE => raise Impossible)
+				        | NONE => Set.empty)
 		    val def = (case Flow.Graph.Table.look(deftable,node) of
 		                  SOME deflist => Set.fromList(List.concat(deflist))
-				| NONE => raise Impossible)
+				        | NONE => Set.empty)
+
+            (*
+            val _ = print("node " ^ (Graph.nodename node) ^ "\n")
+            val _ = (print "use:\n"; printSet use; TextIO.flushOut(TextIO.stdOut))
+            val _ = (print "def:\n"; printSet def;TextIO.flushOut(TextIO.stdOut))
+            *)
 
             (* union all successors sets of succ[n] *)
 		    val succnodeslist = Flow.Graph.succ node
+            (*val _ = print( (Int.toString (length succnodeslist)) ^ "\n")*)
 		    fun succins (succnode, set) = 
 		        (case IGraph.Table.look(intablesets,succnode) of
 			    SOME inset => Set.union(set,inset)
 			  | NONE => raise Impossible)
 	        val succinset = foldl succins Set.empty succnodeslist
+                
+            val _ = (print "successnode:\n"; printSet succinset; TextIO.flushOut(TextIO.stdOut))
 
 		    val in'' = case IGraph.Table.look(intablesets,node) of
-		                   SOME inset => Graph.Table.enter(in''tablesets,node,inset)
+		                   SOME inset => (print "in':\n";printSet inset;TextIO.flushOut(TextIO.stdOut);
+                                        Graph.Table.enter(in''tablesets,node,inset))
 				 | NONE => raise Impossible
 		    val out'' = case IGraph.Table.look(outtablesets,node) of
-		                    SOME outset => Graph.Table.enter(out''tablesets,node,outset)
+		                    SOME outset => (print "out':\n";printSet outset;TextIO.flushOut(TextIO.stdOut);
+                                            Graph.Table.enter(out''tablesets,node,outset))
 				  | NONE => raise Impossible
 
 		    val out' = case IGraph.Table.look(outtablesets,node) of
@@ -83,22 +106,22 @@ struct
 				 | NONE => raise Impossible
 		    val differ = Set.difference(out',def)
 
+            (*val _ = (print "differ:\n";printSet differ;TextIO.flushOut(TextIO.stdOut))*)
+
 		    val in' = IGraph.Table.enter(intablesets,node,Set.union(use,differ))
 		    val out' = IGraph.Table.enter(outtablesets,node,succinset)
-	       
+
+            val _ = (print "in:\n";printSet (Set.union(use,differ));TextIO.flushOut(TextIO.stdOut))
+            val _ = (print "out:\n";printSet succinset;TextIO.flushOut(TextIO.stdOut))
 	        in
-		    (in',out',in'',out'')
-		end
-	    fun evaliteration (intablesets,outtablesets,in''tablesets,out''tablesets) =
-	        let val (intablesets',outtablesets',in'tablesets',out'tablesets) = foldl iteration 
-		                                   (intablesets,outtablesets,in''tablesets,out''tablesets) nodelist
-		in 
-		   if finish (intablesets',outtablesets',in'tablesets',out'tablesets,nodelist)
-		   then (intablesets',outtablesets')
-		   else evaliteration (intablesets',outtablesets',in'tablesets',out'tablesets)
-		end
+               if finish (in',out',in'',out'',nodelist)
+               then (in',out')
+               else iteration(in',out',in'',out'',nodes)
+		    end
+      | iteration(intablesets,outtablesets,in''tablesets,out''tablesets,nil) =
+        iteration(intablesets,outtablesets,in''tablesets,out''tablesets,nodelist)
 	in
-	    evaliteration (intablesets,outtablesets,in'tablesets,out'tablesets)
+        iteration(intablesets,outtablesets,in'tablesets,out'tablesets,nodelist)
 	end
 
     fun temptabletonode table temp =
@@ -119,7 +142,7 @@ struct
     fun liveness flowgraph =
 	let val Flow.FGRAPH{control=graph,def=deftable,use=usetable,ismove=movetable} = flowgraph
 	    val nodelist = IGraph.nodes graph
-	    val (_,outtablesets) = livenessalgo(nodelist,deftable,usetable)
+	    val (_,outtablesets) = livenessalgo(nodelist,usetable,deftable)
     in outtablesetstotemp outtablesets end
         (*
 	    val ig = IGraph.newGraph () 
@@ -183,4 +206,33 @@ struct
 	        
 	    val _ = foldl printnode 0 nodelist 
 	in () end
+
+    fun printliveouts(out,nodelist,nodetotemps) =
+        let fun node n =
+            let val nname = Graph.nodename(n)
+                val temps = nodetotemps(n)
+                val strtemps = foldl (fn (temp,str) => str ^ (Temp.makestring temp) ^ " ") "" temps 
+                val strtemps' = strtemps ^ "\n"
+            in TextIO.output(out,strtemps') end
+        in app node nodelist end
+
+   fun printNodes(out,flowgraph) =
+       let val Flow.FGRAPH{control,def,use,ismove} = flowgraph
+           val nodelist = Graph.nodes control
+           fun node n =
+               let val deflistlist = case Graph.Table.look(def,n) of
+                                         SOME d => d
+                                       | NONE => (print("No defs in node" ^ (Graph.nodename(n)) ^ "\n"); nil)
+                   val deflist = List.concat deflistlist
+                   val uselistlist = case Graph.Table.look(use,n) of
+                                         SOME u => u
+                                       | NONE =>  (print("No uses in node" ^ Graph.nodename(n) ^ "\n"); nil)
+                   val uselist = List.concat uselistlist
+                   fun printuse use =
+                       print ("node " ^ Graph.nodename(n) ^ " use " ^ (Temp.makestring use) ^ "\n")
+                   fun printdef def =
+                       print ("node " ^ Graph.nodename(n) ^ " def " ^ (Temp.makestring def) ^ "\n")
+               in (app printuse uselist; app printdef deflist) end
+           in app node nodelist end
+
 end
