@@ -76,5 +76,12 @@ struct
 
   fun nodename(g,i:int) = "n" ^ Int.toString(i)
 
+  fun printgraph(node::nodes) =
+      let val (g,i) = node 
+      in "n" ^ Int.toString(i) ^ "\n" ^ printgraph(nodes) end
+    | printgraph(nil) =
+      "\n"
+        
+
 end
 
