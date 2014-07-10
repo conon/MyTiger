@@ -4,7 +4,7 @@ structure MakeGraph :
 			 Flow.flowgraph * Flow.Graph.node list
 	  end =
 struct 
-exception TableNotFound
+exception TableNotFoundMakeGraph
 
 fun instrs2graph instrlist =
     (* Instructions are placed with reverse order *)
@@ -20,8 +20,12 @@ fun instrs2graph instrlist =
                                              val ismovetb' = Graph.Table.enter(ismovetb,block,false::mvlst)
                                              val jumplisttb' = Graph.Table.enter(jumplisttb,block,jumplist)
                                              val newblock = Graph.newNode graph
-                                         in (newblock::blocklst,nil,nil,nil,srctb',dsttb',
-                                             ismovetb',labeltb,jumplisttb') 
+                                             val srctb'' = Graph.Table.enter(srctb',newblock,nil) 
+                                             val dsttb'' = Graph.Table.enter(dsttb',newblock,nil) 
+                                             val ismovetb'' = Graph.Table.enter(ismovetb',newblock,nil)
+                                             val jumplisttb'' = Graph.Table.enter(jumplisttb',newblock,nil)
+                                         in (newblock::blocklst,nil,nil,nil,srctb'',dsttb'',
+                                             ismovetb'',labeltb,jumplisttb'') 
                                          end
                       | NONE => (blocklst,slst::srclstlst,dlst::dstlstlst,false::mvlst,srctb,
                                  dsttb,ismovetb,labeltb,jumplisttb))
@@ -42,7 +46,7 @@ fun instrs2graph instrlist =
           let fun fetchBlock label =
                   case Symbol.look(labeltb,label) of
                       SOME b => b
-                    | NONE => raise TableNotFound
+                    | NONE => raise TableNotFoundMakeGraph
               fun fetchJumplist block =
                   case Graph.Table.look(jumplisttb,block) of
                       SOME jl => jl

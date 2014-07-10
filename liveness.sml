@@ -2,6 +2,7 @@ structure Liveness :
 sig
     structure IGraph : GRAPH
     exception Impossible
+    exception TableNotFoundLiveness
     datatype igraph =
         IGRAPH of {graph : IGraph.graph,
 	           tnode : Temp.temp -> IGraph.node,
@@ -18,6 +19,7 @@ end =
 struct
     structure IGraph = Flow.Graph
     exception Impossible
+    exception TableNotFoundLiveness
     (* taken from sml/nj library *)
     structure Set = ListSetFn(type ord_key = int; (*Temp.temp is int*)
                               val compare = Int.compare)
@@ -90,15 +92,15 @@ struct
 			  | NONE => raise Impossible)
 	        val succinset = foldl succins Set.empty succnodeslist
                 
-            val _ = (print "successnode:\n"; printSet succinset; TextIO.flushOut(TextIO.stdOut))
+            (*val _ = (print "successnode:\n"; printSet succinset; TextIO.flushOut(TextIO.stdOut))*)
 
 		    val in'' = case IGraph.Table.look(intablesets,node) of
-		                   SOME inset => (print "in':\n";printSet inset;TextIO.flushOut(TextIO.stdOut);
-                                        Graph.Table.enter(in''tablesets,node,inset))
+		                   SOME inset => (*(print "in':\n";printSet inset;TextIO.flushOut(TextIO.stdOut);*)
+                                        Graph.Table.enter(in''tablesets,node,inset)
 				 | NONE => raise Impossible
 		    val out'' = case IGraph.Table.look(outtablesets,node) of
-		                    SOME outset => (print "out':\n";printSet outset;TextIO.flushOut(TextIO.stdOut);
-                                            Graph.Table.enter(out''tablesets,node,outset))
+		                    SOME outset => (*(print "out':\n";printSet outset;TextIO.flushOut(TextIO.stdOut);*)
+                                            Graph.Table.enter(out''tablesets,node,outset)
 				  | NONE => raise Impossible
 
 		    val out' = case IGraph.Table.look(outtablesets,node) of
@@ -111,8 +113,10 @@ struct
 		    val in' = IGraph.Table.enter(intablesets,node,Set.union(use,differ))
 		    val out' = IGraph.Table.enter(outtablesets,node,succinset)
 
+            (*
             val _ = (print "in:\n";printSet (Set.union(use,differ));TextIO.flushOut(TextIO.stdOut))
             val _ = (print "out:\n";printSet succinset;TextIO.flushOut(TextIO.stdOut))
+            *)
 	        in
                if finish (in',out',in'',out'',nodelist)
                then (in',out')
@@ -137,58 +141,13 @@ struct
     fun outtablesetstotemp table node =
         case IGraph.Table.look(table,node) of
 	    SOME tempset => Set.listItems tempset
-	  | NONE => raise Impossible
+	  | NONE => raise TableNotFoundLiveness
 
     fun liveness flowgraph =
 	let val Flow.FGRAPH{control=graph,def=deftable,use=usetable,ismove=movetable} = flowgraph
 	    val nodelist = IGraph.nodes graph
 	    val (_,outtablesets) = livenessalgo(nodelist,usetable,deftable)
     in outtablesetstotemp outtablesets end
-        (*
-	    val ig = IGraph.newGraph () 
-	    fun nodes (node,(temptable,nodetable,moveslist)) =
-	        let fun defs (def,(worklist,moveslist,adjSet,adjList,degree))=
-                let val use = case Flow.Graph.Table.look(usetable,node) of (* for outlist[n] - use *)
-                                  SOME uselist => hd uselist
-                            | NONE => raise Impossible
-                    val newnodedef = IGraph.newNode ig
-                    val temptable' = Temp.Table.enter(temptable,def,newnodedef)
-                    val nodetable' = IGraph.Table.enter(nodetable,newnodedef,def)
-                    val ismove = case Flow.Graph.Table.look(movetable,node) of
-                                     SOME m => m
-                                   | NONE => raise Impossible
-                    fun outs (out,(temptable,nodetable,moveslist)) =
-                    let val newnodeout = IGraph.newNode ig
-                        val temptable'' = Temp.Table.enter(temptable,out,newnodeout)
-                        val nodetable'' = IGraph.Table.enter(nodetable,newnodeout,out)
-                    in
-                        case ismove of
-                            true => if out=use (* a <- c add intererence for any bi not the same as c *)
-                                then (temptable'',nodetable'',(newnodedef,newnodeout)::moveslist)
-                            else (IGraph.mk_edge{from=newnodedef,to=newnodeout};
-                                  (temptable'',nodetable'',moveslist))
-                          | false => (IGraph.mk_edge{from=newnodedef,to=newnodeout};
-                                      (temptable'',nodetable'',moveslist))
-                    end
-                   val outlist = case IGraph.Table.look(outablesets,node) of
-                             SOME set => Set.listItems set
-                           | NONE => raise Impossible
-                in
-                    foldl outs (temptable',nodetable',moveslist) outlist
-                end
-                   val deflist = case Flow.Graph.Table.look(deftable,node) of
-                                 SOME defnodelist => defnodelist
-                       | NONE => raise Impossible
-	       in
-               (* for every def (instruction) *)
-	           foldl defs (worklist,moveslist,adjSet,adjList,degree) deflist
-	       end
-	    val (temptable,nodetable,moveslist) = foldl nodes (Temp.Table.empty,IGraph.Table.empty,nil) nodelist
-	in
-	    (IGRAPH{graph=ig,tnode=temptabletonode temptable,
-	            gtemp=nodetabletotemp nodetable,moves=moveslist},outtablesetstotemp outablesets)
-	end     
-    *)
 
     fun show (out,igraph) =
         let val IGRAPH{graph=graph,tnode=t,gtemp=g,moves=mlst} = igraph
@@ -212,7 +171,7 @@ struct
             let val nname = Graph.nodename(n)
                 val temps = nodetotemps(n)
                 val strtemps = foldl (fn (temp,str) => str ^ (Temp.makestring temp) ^ " ") "" temps 
-                val strtemps' = strtemps ^ "\n"
+                val strtemps' = Graph.nodename(n) ^ ": " ^ strtemps ^ "\n"
             in TextIO.output(out,strtemps') end
         in app node nodelist end
 
