@@ -1,7 +1,7 @@
 signature COLOR =
 sig
     structure Frame : FRAME
-    exception TableNotFound
+    exception TableNotFoundColor
     type allocation = Frame.register Temp.Table.table
     val color : {instrs: Assem.instr list,
                  initial : allocation,
@@ -12,24 +12,26 @@ end
 
 structure Color : COLOR =
 struct
-    structure Frame = MipsFrame
-    exception TableNotFound
+    structure Frame = ArmFrame
+    exception TableNotFoundColor
+    exception Testing
     (* In order to put nodes we use the node to temp(int) gtenp *)
     structure Set = ListSetFn(type ord_key = int; 
                               val compare = Int.compare)
     structure SetTuple = ListSetFn(type ord_key = {u:int,v:int};
-                                   val compare = (fn ({u=ul,v=vl},{u=ur,v=vr}) => if ul<ur orelse vr<vr
-                                                                          then LESS
-                                                                          else if ul>ur orelse vl>vr
-                                                                          then LESS
-                                                                          else EQUAL))
+                                   val compare = (fn ({u=ul,v=vl},{u=ur,v=vr}) => 
+                                       if ul<ur orelse vr<vr
+                                       then LESS
+                                       else if ul>ur orelse vl>vr
+                                       then LESS
+                                       else EQUAL))
     type allocation = Frame.register Temp.Table.table
 
     (* TODO: when finish coalesced all possible mappings *)
     fun mapping (table,node) =
-        case Graph.Table.look(table,node) of
+        case Flow.Graph.Table.look(table,node) of
             SOME n => n
-          | NONE => raise TableNotFound
+          | NONE => (print "mapping "; raise TableNotFoundColor)
     fun mapDegree (table,node) = 
         case Temp.Table.look(table,node) of
             SOME n => n
@@ -45,11 +47,32 @@ struct
     fun mapColor (table,node) = 
         case Temp.Table.look(table,node) of
             SOME n => n
-          | NONE => raise TableNotFound
+          | NONE => (print "mapcolor ";raise TableNotFoundColor)
     fun mapAlias (table,node) = 
         case Temp.Table.look(table,node) of
             SOME n => n
-          | NONE => raise TableNotFound
+          | NONE => (print "mapalias ";raise TableNotFoundColor)
+
+    fun printSet (name,set) =
+        (print name;Set.app (fn item => print(": " ^ Int.toString(item) ^ "\n")) set)
+    fun printTupleSet (name,set) =
+        (print name;
+         SetTuple.app (fn {u,v} => print(": "^ "("^ Int.toString(u)^","^Int.toString(v)^")"^"\n")) set;
+         print "\n")
+
+    fun printTemptoInt (name,map,nodes) = 
+        (print (name ^ ": \n"); 
+        Set.app (fn node => case Temp.Table.look(map,node) of 
+                            SOME i => print(Temp.makestring(node)^"-> "^Int.toString(i)^" ")
+                          | NONE => (print "NONE ";())) nodes; 
+         print("\n");TextIO.flushOut(TextIO.stdOut))
+    fun printTemptoSet (name,map,nodes) =
+         (print (name ^ ": \n");
+         Set.app (fn node => case Temp.Table.look(map,node) of 
+                             SOME set => (print(Temp.makestring(node)^"-> ");printSet("",set);print(" "))
+                           | NONE => (print "NONE ")) nodes;
+         print("\n");TextIO.flushOut(TextIO.stdOut))
+
 
     fun color {instrs, initial, spillCost, registers} =
         let 
@@ -74,12 +97,14 @@ struct
         val alias = Temp.Table.empty (* temp to temp *)
         val color = Temp.Table.empty (* temp to int *)
         val K = length(Frame.registers)
-        (*TODO: initialize adjList and degree *)
 
 	    fun main (moveList,worklistMoves,adjList,degree,adjSet) =
 	    let val (flowgraph,nodes(* blocks *)) = MakeGraph.instrs2graph instrs
             val Flow.FGRAPH{control=fgraph,def=deftable,use=usetable,ismove=ismovetable} = flowgraph
             val liveOut = Liveness.liveness flowgraph
+            (*val _ = print(Int.toString(length nodes))
+            val _ = app (fn x => print (Int.toString x)) (List.concat(mapping(usetable,hd nodes)))
+            val _ = (print "HEU\n\n";print (Graph.printgraph(nodes)))*)
 
         fun addEdge (u,v,adjList,degree,adjSet) =
             let val adjListsetuset = mapAdjList(adjList,u)
@@ -87,24 +112,28 @@ struct
                 val degreeuint = mapDegree(degree,u)
                 val degreevint = mapDegree(degree,v)
                 fun utest (adjList,degree) =
-                    if (Set.exists (fn x => if x = u then true else false) precolored)
-                    then (Temp.Table.enter(adjList,u,Set.add(adjListsetuset,u)),
-                      Temp.Table.enter(degree,u,degreeuint+1))
+                    if not (Set.exists (fn x => if x = u then true else false) precolored)
+                    then (Temp.Table.enter(adjList,u,Set.add(adjListsetuset,v)),
+                          Temp.Table.enter(degree,u,degreeuint+1))
                     else (adjList,degree)
                 fun vtest (adjList,degree) =
-                    if Set.exists (fn x => if x = v then true else false) precolored
-                    then (Temp.Table.enter(adjList,v,Set.add(adjListsetuset,v)),
+                    if not (Set.exists (fn x => if x = v then true else false) precolored)
+                    then (Temp.Table.enter(adjList,v,Set.add(adjListsetvset,u)),
                           Temp.Table.enter(degree,v,degreevint+1))
                     else (adjList,degree)
+                val t1 = (SetTuple.exists (fn {u=us,v=vs} => if u=us andalso v=vs then true else false) adjSet)
+                val t2 = u <> v
+                (*val _ = print("t1 "^Bool.toString(t1)^" t2 "^Bool.toString(t2)^"\n")*)
             in
-                if not (SetTuple.exists (fn {u=us,v=vs} => if u=us andalso v=vs then true else false) adjSet)
-
-                   andalso u <> v
+                if not t1 andalso t2
                 then let val adjSet' = SetTuple.add(adjSet,{u=u,v=v})(* (u,v),(v,u) *)
                          val (adjList',degree') = utest(adjList,degree)
                          val (adjList'',degree'') = vtest(adjList',degree')
+                         (*val _ =(printTemptoInt("degree",degree'',adjListsetuset);
+                                 print("\n\n\n\n\n"))*)
+                         (*val _ = printTemptoSet("adjsetInside",adjList'',adjListsetuset)*)
                      in (adjList'',degree'',adjSet') end
-                else (adjList,degree,adjSet)
+                else (*print "ELESLE!!!\n"*)(adjList,degree,adjSet)
             end 
 
         fun build (block,(moveList,worklistMoves,adjList,degree,adjSet)) =
@@ -120,8 +149,13 @@ struct
                                (case ismove of
                                      true => let val live' = Set.difference(live,useset)
                                                  val defunionuse = Set.union(useset,defset)
+                                                 val _ =(print "\nTestPrint"; Set.app (fn item => print("\n"^Temp.makestring(item)))defunionuse)
                                                  fun addI (item,moveList) =
-                                                     Temp.Table.enter(moveList,item,defunionuse)
+                                                     let val defunionuse' = case Temp.Table.look(moveList,item) of
+                                                                         SOME i => Set.union(i,defunionuse)
+                                                                       | NONE => defunionuse
+                                               val defunionuse'' = Set.difference(defunionuse',Set.singleton(item))
+                                                     in Temp.Table.enter(moveList,item,defunionuse'') end
                                                  val moveList' = Set.foldl addI moveList defunionuse
                                                  val worklistMoves' = Set.union(worklistMoves,defunionuse)
                                               in (moveList',worklistMoves',live') end
@@ -132,18 +166,25 @@ struct
                                 addEdge(d,l,adjList,degree,adjSet)
                             in Set.foldl lives (adjList,degree,adjSet) live'' end
                         val (adjList',degree',adjSet') = Set.foldl defsI (adjList,degree,adjSet) defset
+                        (*val _ = print "FINISH\n"*)
+                        (*val _ = (printTemptoInt("degree",degree,live'');
+                        printTemptoSet("moveList",moveList,live'');
+                        printTemptoSet("adjList",adjList,live'');
+                        print("\n\n\n\n\n"))*)
                         val live''' = Set.union(useset,Set.difference(live'',defset))
                   in instructions (uses,defs,ismoves,moveList',worklistMoves',adjList',degree',adjSet',live''') end
 
                 | instructions (nil,nil,nil,moveList,worklistMoves,adjList,degree,adjSet,live) =
+                        (*(printTemptoInt("degree",degree,live);
+                        printTemptoSet("moveList",moveList,live);
+                        printTemptoSet("adjList",adjList,live);
+                        printTupleSet("adjSet",adjSet);
+                        print("\n\n\n\n\n");*)
                         (moveList,worklistMoves,adjList,degree,adjSet)
 
                val (moveList,worklistMoves,adjList,degree,adjSet) = 
                               instructions (use,def,ismove,moveList,worklistMoves,adjList,degree,adjSet,liveset)
            in (moveList,worklistMoves,adjList,degree,adjSet) end
-
-     val (moveList,worklistMoves,adjList,degree,adjSet) = foldl build (moveList,worklistMoves,adjList,degree,adjSet) 
-                                                                nodes 
 
     (* temp * ... -> Set *)
     fun nodeMoves (n,moveList,activeMoves,worklistmoves) =
@@ -475,11 +516,34 @@ struct
                 selectStack,coalescedMoves,constrainedMoves,frozenMoves,worklistMoves,activeMoves,
                 adjSet,adjList,degree,moveList,alias,color)
              end
-    in (*if Set.isEmpty spilledNodes end
-       then let val test rewriteprograms(spilledNodes)
-                val main()
-            in ... end
-       else ... *) ()
-    end
-    in () end
+
+        (* 1. construct the control flow graph *)
+        (* 2. construct the data flow graph *)
+        (* 3. construct the interference graph TODO:check it *)
+        val (moveList,worklistMoves,adjList,degree,adjSet) = foldl build (moveList,
+                                                      worklistMoves,adjList,degree,adjSet) nodes
+        val _ = printSet("worklistMoves",worklistMoves)
+        val _ = printTemptoSet("adjList",adjList,worklistMoves);
+        val _ = printTemptoInt("degree",degree,worklistMoves);
+        val _ = printTupleSet("adjSet",adjSet);
+        val _ = printTemptoSet("moveList",moveList,worklistMoves);
+
+        (* 4. make initial worklist TODO: check it 
+        val (spillWorklist,freezeWorklist,simplifyWorklist) = foldl makeWorklist 
+                (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistmoves) initial ?? *)
+        (* 5. repeat until simplifyWorklist = {} and worklistMoves = {} and freezeWorklist = {} and spillWorklist = {} TODO:check it 
+        val (activeMoves,frozenMoves,freezeWorklist,simplifyWorklist) =
+             repeat(simplifyWorklist,freezeWorklist,spillWorklist,spilledNodes,coalescedNodes,coloredNodes,
+                    selectStack,coalescedMoves,constrainedMoves,frozenMoves,worklistMoves,activeMoves,
+                    adjSet,adjList,degree,moveList,alias,color) *)
+       (* 6. assign Colors TODO: check it
+       val (spilledNodes,coloredNodes,color') = assignColors(selectStack,adjList,
+                                                 coloredNodes,color,spilledNodes,coalescedNodes,alias) *)
+       (* 7. if spillNodes != {} then rewrite the program 
+       in if Set.empty spillNodes
+          then let val (...) = rewriteProgram(...)
+               in main(...) end
+          else *)
+       in () end (* main *)
+    in (main(moveList,worklistMoves,adjList,degree,adjSet);(Frame.tempMap,nil)) end
 end

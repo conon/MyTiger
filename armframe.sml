@@ -51,6 +51,7 @@ struct
                              Temp.Table.empty (ListPair.zip(registerTemps, registers))
 
     fun newFrame {name : Temp.label, formals : bool list} =
+    (*app (fn f => print((Bool.toString f) ^ " ")) formals; print "\nfinish\n";*)
         let fun formalsiter (fs,offset,counter) =
 	       case fs of
 	           f::fs => (case f of
@@ -59,8 +60,12 @@ struct
 			                          then InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter+1)
 					                  else InReg (Temp.newtemp()) :: formalsiter(fs,offset,counter+1))
              | nil => nil
+           val ff = formalsiter(formals,0,0)
 	 in
-	     {name=name, formals=formalsiter(List.rev formals,0,0), locals=ref 0}
+         (*app (fn a => case a of 
+                            InFrame k => (print ("FRAME " ^ (Int.toString k) ^ "\n"))
+                          | InReg r => (print ("REGISTER" ^ (Int.toString r) ^ "\n"))) ff; *)
+	     {name=name, formals=formalsiter(formals,0,0), locals=ref 0}
 	 end
     
     fun name {name = n, formals = _, locals=_} = n
@@ -116,12 +121,6 @@ struct
 	    SOME v => ""
 	  | NONE => "" *)
 
-    (*
-    fun procEntryExit2 (frame,body) =
-        body @ [A.OPER{assem="",
-	               src=[ZERO,RA,SP]@calleesaves,
-		       dst=[], jump=SOME[]}]
-               *)
 end
 
 
