@@ -4,7 +4,7 @@ sig
     exception TableNotFoundColor
     type allocation = Frame.register Temp.Table.table
     val color : {instrs: Assem.instr list,
-                 initial : allocation,
+                 initial : Frame.register list,
                  spillCost : Graph.node -> int,
                  registers : Frame.register list}
                  -> allocation * Temp.temp list
@@ -53,12 +53,8 @@ struct
             SOME n => n
           | NONE => (print "mapalias ";raise TableNotFoundColor)
 
-    val color = ref 0
-    fun makeColorsPre (registers) =
-        foldl (fn (str,colors) => let val c = !color in (color := !color + 1; c::colors) end) nil registers
-
     fun printSet (name,set) =
-        (print name;Set.app (fn item => print(": " ^ Int.toString(item) ^ "\n")) set)
+        (print name;Set.app (fn item => print(": " ^ Int.toString(item) ^ "\n")) set;print "\n")
     fun printTupleSet (name,set) =
         (print name;
          SetTuple.app (fn {u,v} => print(": "^ "("^ Int.toString(u)^","^Int.toString(v)^")"^"\n")) set;
@@ -80,9 +76,8 @@ struct
 
     fun color {instrs, initial, spillCost, registers} =
         let 
-        val listprecolors = makeColorsPre(Frame.registers)
-        val precolored = Set.fromList listprecolors (* TODO: assign colors, set of int *)
-        (* val initial = ?? *)
+        val precolored = Set.fromList registers (* set of int *)
+        val initial = ref nil
         val simplifyWorklist = Set.empty
         val freezeWorklist = Set.empty
         val spillWorklist = Set.empty
@@ -167,8 +162,9 @@ struct
                                     | false => (moveList,worklistMoves,live))
                         val live'' = Set.union(live',defset)
                         fun defsI (d,(adjList,degree,adjSet)) =
-                            let fun lives (l,(adjList,degree,adjSet)) =
-                                addEdge(d,l,adjList,degree,adjSet)
+                            let val _ = initial := d::(!initial)
+                                fun lives (l,(adjList,degree,adjSet)) =
+                                (initial := l::(!initial); addEdge(d,l,adjList,degree,adjSet))
                             in Set.foldl lives (adjList,degree,adjSet) live'' end
                         val (adjList',degree',adjSet') = Set.foldl defsI (adjList,degree,adjSet) defset
                         (*val _ = print "FINISH\n"*)
@@ -192,14 +188,20 @@ struct
            in (moveList,worklistMoves,adjList,degree,adjSet) end
 
     (* temp * ... -> Set *)
-    fun nodeMoves (n,moveList,activeMoves,worklistmoves) =
-        let val m = mapMoveList(moveList,n)
-            val aw = Set.union(activeMoves,worklistMoves)
+    fun nodeMoves (n,ml,am,wlm) =
+        let val m = mapMoveList(ml,n)
+            val aw = Set.union(am,wlm)
+            (*
+            val _ = (print "insidenodeMoves\n";
+                    printSet(Temp.makestring(n),m);
+                    printSet("union",aw);
+                    printSet("intersection",Set.intersection(m,aw)))
+            *)
         in Set.intersection(m,aw) end
 
     (* temp * ... -> bool *)
     fun moveRelated (n,moveList,activeMoves,worklistmoves) =
-        Set.isEmpty(nodeMoves(n,moveList,activeMoves,worklistmoves))
+        not (Set.isEmpty(nodeMoves(n,moveList,activeMoves,worklistmoves)))
 
     (* temp * ... -> Set *)
     fun adjacent (n,adjList,selectStack,coalescedNodes) =
@@ -212,14 +214,11 @@ struct
         let val d = mapDegree(degree,n)
         in
             if d > K
-            then (Set.add(spillWorklist,n),freezeWorklist,simplifyWorklist)
+            then (Set.add(spillWorklist,n),freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistmoves)
             else if moveRelated(n,moveList,activeMoves,worklistmoves)
-            then (spillWorklist,Set.add(freezeWorklist,n),simplifyWorklist)
-            else (spillWorklist,freezeWorklist,Set.add(simplifyWorklist,n))
+            then (spillWorklist,Set.add(freezeWorklist,n),simplifyWorklist,moveList,activeMoves,worklistmoves)
+            else (spillWorklist,freezeWorklist,Set.add(simplifyWorklist,n),moveList,activeMoves,worklistmoves)
         end
-    (*
-    val (spillWorklist,freezeWorklist,simplifyWorklist) = foldl makeWorklist 
-                (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistmoves) initial ??*)
 
     (* Set.set * ... -> activeMoves * worklistmoves * moveList *)
     fun enableMoves (nodes,activeMoves,worklistMoves,moveList) =
@@ -527,15 +526,24 @@ struct
         (* 3. construct the interference graph *)
         val (moveList,worklistMoves,adjList,degree,adjSet) = foldl build (moveList,
                                                       worklistMoves,adjList,degree,adjSet) nodes
-        val _ = printSet("worklistMoves",worklistMoves)
-        val _ = printTemptoSet("adjList",adjList,worklistMoves);
-        val _ = printTemptoInt("degree",degree,worklistMoves);
-        val _ = printTupleSet("adjSet",adjSet);
-        val _ = printTemptoSet("moveList",moveList,worklistMoves);
 
-        (* 4. make initial worklist TODO: check it 
-        val (spillWorklist,freezeWorklist,simplifyWorklist) = foldl makeWorklist 
-                (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistmoves) initial ?? *)
+        val _ = (Set.app (fn x => print (Int.toString(x)^" ")) (Set.fromList(!initial));print "\n")
+        val initial' = Set.fromList(!initial)
+        val _ = printSet("worklistMoves",initial')
+        val _ = printTemptoSet("adjList",adjList,initial');
+        val _ = printTemptoInt("degree",degree,initial');
+        val _ = printTupleSet("adjSet",adjSet);
+        val _ = printTemptoSet("moveList",moveList,initial');
+
+        (* 4. make initial worklist *)
+        val (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistMoves) = foldl makeWorklist 
+                (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistMoves) (!initial)
+
+        val _ = printSet("spillWorklist",spillWorklist)
+        val _ = printSet("freezeWorklist",freezeWorklist)
+        val _ = printSet("simplifyWorklist",simplifyWorklist)
+
+
         (* 5. repeat until simplifyWorklist = {} and worklistMoves = {} and freezeWorklist = {} and spillWorklist = {} TODO:check it 
         val (activeMoves,frozenMoves,freezeWorklist,simplifyWorklist) =
              repeat(simplifyWorklist,freezeWorklist,spillWorklist,spilledNodes,coalescedNodes,coloredNodes,
