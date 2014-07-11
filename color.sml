@@ -53,6 +53,10 @@ struct
             SOME n => n
           | NONE => (print "mapalias ";raise TableNotFoundColor)
 
+    val color = ref 0
+    fun makeColorsPre (registers) =
+        foldl (fn (str,colors) => let val c = !color in (color := !color + 1; c::colors) end) nil registers
+
     fun printSet (name,set) =
         (print name;Set.app (fn item => print(": " ^ Int.toString(item) ^ "\n")) set)
     fun printTupleSet (name,set) =
@@ -76,7 +80,8 @@ struct
 
     fun color {instrs, initial, spillCost, registers} =
         let 
-        val precolored = Set.empty (* set of int *)
+        val listprecolors = makeColorsPre(Frame.registers)
+        val precolored = Set.fromList listprecolors (* TODO: assign colors, set of int *)
         (* val initial = ?? *)
         val simplifyWorklist = Set.empty
         val freezeWorklist = Set.empty
@@ -149,7 +154,7 @@ struct
                                (case ismove of
                                      true => let val live' = Set.difference(live,useset)
                                                  val defunionuse = Set.union(useset,defset)
-                                                 val _ =(print "\nTestPrint"; Set.app (fn item => print("\n"^Temp.makestring(item)))defunionuse)
+         (* val _ =(print "\nTestPrint"; Set.app (fn item => print("\n"^Temp.makestring(item)))defunionuse) *)
                                                  fun addI (item,moveList) =
                                                      let val defunionuse' = case Temp.Table.look(moveList,item) of
                                                                          SOME i => Set.union(i,defunionuse)
@@ -519,7 +524,7 @@ struct
 
         (* 1. construct the control flow graph *)
         (* 2. construct the data flow graph *)
-        (* 3. construct the interference graph TODO:check it *)
+        (* 3. construct the interference graph *)
         val (moveList,worklistMoves,adjList,degree,adjSet) = foldl build (moveList,
                                                       worklistMoves,adjList,degree,adjSet) nodes
         val _ = printSet("worklistMoves",worklistMoves)
