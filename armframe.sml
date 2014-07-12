@@ -2,7 +2,7 @@ structure ArmFrame : FRAME =
 struct
     structure A = Assem
     structure T = Tree
-    type register = string
+    type register = int
     datatype access = InFrame of int
                     | InReg of Temp.temp
     type frame = {name : Temp.label, formals : access list, locals : int ref}
@@ -10,8 +10,14 @@ struct
                   | STRING of Temp.label * string
     val wordSize = 4 (* arm word is 4 bytes *)
 
+    (*
     val registers = ["a1","a2","a3","a4","v1","v2","v3","v4",
                      "v5","v6","v7","FP","IP","SP","LR","PC"]
+    *)
+    (* registers for use *)
+    val registers = [0,1,2,3,4,5,6,7,9,10,11,12,13]
+    val registers' = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+    val initregisters = [0,1,2,3,11,13,14,15]
                      
     val a1 = Temp.newtemp() (* argument/result scratch register  *)
     val a2 = Temp.newtemp() (* argument/result scratch register *)
@@ -46,9 +52,10 @@ struct
 
     val registerTemps = [a1,a2,a3,a4,v1,v2,v3,v4,
                          v5,v6,v7,v8,IP,SP,LR,PC]
+    val preRegisterTemps = [a1,a2,a3,a4,SP,LR,PC]
 
     val tempMap = List.foldl (fn ((key, value), table) => Temp.Table.enter(table, key, value))
-                             Temp.Table.empty (ListPair.zip(registerTemps, registers))
+                             Temp.Table.empty (ListPair.zip(preRegisterTemps, registers'))
 
     fun newFrame {name : Temp.label, formals : bool list} =
     (*app (fn f => print((Bool.toString f) ^ " ")) formals; print "\nfinish\n";*)

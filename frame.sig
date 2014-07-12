@@ -1,9 +1,10 @@
 signature FRAME =
 sig 
-    type register = string
+    type register = int
     val RV : Temp.temp (* return value *)
     val FP : Temp.temp (* frame pointer *)
     val registers : register list
+    val initregisters : register list
     val tempMap : register Temp.Table.table
     val wordSize : int
     val externalCall : string * Tree.exp list -> Tree.exp
