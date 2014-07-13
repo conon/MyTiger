@@ -1,7 +1,7 @@
 signature COLOR =
 sig
     structure Frame : FRAME
-    type allocation = Frame.register Temp.Table.table
+    type allocation = Frame.registerStr Temp.Table.table
     val color : {instrs: Assem.instr list,
                  initial : Frame.register list,
                  spillCost : Graph.node -> int,
@@ -25,7 +25,7 @@ struct
                                        else if ul>ur orelse vl>vr
                                        then LESS
                                        else EQUAL))
-    type allocation = Frame.register Temp.Table.table
+    type allocation = Frame.registerStr Temp.Table.table
 
     (* TODO: when finish coalesced all possible mappings *)
     fun mapping (table,node) =
@@ -227,6 +227,19 @@ struct
             let val d = mapDegree(degree,m)
                 val degree' = Temp.Table.enter(degree,m,d-1)
             in 
+               (* TODO: augment to full implementation 
+               if d = K
+               then let val unionRes = Set.union(mset,adjacent(m,adjList,selectStack,coalescedNodes))
+                        val (activeMoves',worklistMoves',moveList') = enableMoves (unionRes,activeMoves,
+                                                                                   worklistMoves,moveList)
+                        val spillWorklist' = Set.difference(spillWorklist,mset)
+                    in if moveRelated(m,moveList,activeMoves,worklistMoves)
+                       then (simplifyWorklist,Set.union(freezeWorklist,mset),degree',spillWorklist',
+                             activeMoves',worklistMoves',moveList',coalescedNodes,selectStack)
+                       else (Set.union(simplifyWorklist,mset),freezeWorklist,degree',spillWorklist',
+                             activeMoves',worklistMoves',moveList',coalescedNodes,selectStack)
+                    end
+               *)
                 (simplifyWorklist,freezeWorklist,degree',spillWorklist,activeMoves,worklistMoves,
                   moveList,coalescedNodes,selectStack)
             end 
@@ -243,20 +256,62 @@ struct
                       | nil => raise RegisterOverflow (* if spilling is needed give up *)
 
                 val n = chooseNode(Set.listItems simplifyWorklist)
+                (* TODO: augment to full implementation, handle spill nodes *)
                 (* Note: decrementDegree is evaluated first, before substracting n from sipmlifyWorklist *)
                 val adjacentRes = adjacent(n,adjL,selectStack,coalescedNodes)
-                val _ = printSet("adjacentRes",adjacentRes)
+                (*val _ = printSet("adjacentRes",adjacentRes)*)
                 val (simplifyWorklist,freezeWorklist,degree',spillWorklist,activeMoves,worklistMoves,moveList,
                      coalescedNodes,selectStack) = 
                    Set.foldl decrementDegree (simplifyWorklist,freezeWorklist,degree,spillWorklist,activeMoves,
                                                worklistMoves,moveList,coalescedNodes,selectStack)  adjacentRes
                 val simplifyWorklist' = Set.difference(simplifyWorklist,Set.singleton n)
                 val selectStack' = n::selectStack
-                val _ = (print("Node "^Temp.makestring(n)^"\n");printTemptoInt("degree",degree',adjacentRes))
+                (*val _ = (print("Node "^Temp.makestring(n)^"\n");printTemptoInt("degree",degree',adjacentRes))
                 val _ = printSet("simplifyWorklist",simplifyWorklist')
                 val _ = (print "selectStack: ";app (fn item => print(Int.toString(item)^" ")) selectStack';print "\n")
+                *)
             in (degree',simplifyWorklist',freezeWorklist,activeMoves,worklistMoves,selectStack',moveList,
                 coalescedNodes,spillWorklist,adjL) end
+
+        fun getAlias (n,alias,coalescedNodes) =
+            if Set.exists (fn x => if n = x then true else false) coalescedNodes
+            then let val al = mapAlias(alias,n) in getAlias(al,alias,coalescedNodes) end
+            else n
+
+        fun assignColors(selectStack,adjList,coloredNodes,color,spilledNodes,coalescedNodes,alias) = 
+                (* temp::temps ... -> spilledNodes * coloredNodes * color *)
+            let fun makeColors k =
+                    if k = ~1
+                    then nil
+                    else k :: makeColors(k-1)
+                fun iter (n::selectStack,spilledNodes,coloredNodes,color) =
+                let val adjListn = mapAdjList(adjList,n)
+                    fun diffcolors(w,okColor) =
+                        let val g = getAlias(w,alias,coalescedNodes)
+                            val cp = Set.union(coloredNodes,precolored)
+                        in if Set.exists (fn x => if g = x then true else false) cp
+                           then let val mapc = mapColor(color,w) 
+                                in Set.difference(okColor,Set.singleton mapc) end
+                           else okColor
+                        end
+                    val okColors = Set.fromList(makeColors(K-1))
+                    val okColors' = Set.foldl diffcolors okColors adjListn
+                    in if Set.isEmpty okColors'
+                       then iter(selectStack,Set.add(spilledNodes,n),coloredNodes,color)
+                       else let val SOME(c,okColors'') = List.getItem(Set.listItems okColors')
+                                val color' = Temp.Table.enter(color,n,c)
+                                val coloredNodes' = Set.add(coloredNodes,n)
+                                val okColors''' = Set.fromList okColors''
+                            in iter(selectStack,spilledNodes,coloredNodes',color') end
+                    end
+                  | iter(nil,spilledNodes,coloredNodes,color) =
+                        (spilledNodes,coloredNodes,color)
+                 val (spilledNodes,coloredNodes,color) = iter(selectStack,spilledNodes,coloredNodes,color)
+                 fun updatecolor (n,color) =
+                     let val g = getAlias(n,alias,coalescedNodes)
+                     in Temp.Table.enter(color,n,g) end
+                 val color' = Set.foldl updatecolor color coalescedNodes
+             in (spilledNodes,coloredNodes,color') end
 
         (* 1. construct the control flow graph *)
         (* 2. construct the data flow graph *)
@@ -265,23 +320,28 @@ struct
         val (moveList,worklistMoves,adjList,degree,adjSet) = foldl build (moveList,
                                                       worklistMoves,adjList,degree,adjSet) nodes
 
-        val _ = (Set.app (fn x => print (Int.toString(x)^" ")) (Set.fromList(!initial));print "\n")
+        val _ = (print "initials: \n";
+                 Set.app (fn x => print (Int.toString(x)^" ")) (Set.fromList(!initial));
+                 print "\n")
         val initial' = Set.fromList(!initial)
+        (*
         val _ = printSet("worklistMoves",initial')
         val _ = printTemptoSet("adjList",adjList,initial');
         val _ = printTemptoInt("degree",degree,initial');
         val _ = printTupleSet("adjSet",adjSet);
         val _ = printTemptoSet("moveList",moveList,initial');
+        *)
 
         (* 4. make initial worklist *)
         val (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistMoves) = foldl makeWorklist 
                 (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistMoves) (!initial)
 
+        (*
         val _ = printSet("spillWorklist",spillWorklist)
         val _ = printSet("freezeWorklist",freezeWorklist)
         val _ = printSet("simplifyWorklist",simplifyWorklist)
+        *)
 
-        (* 5. repeat simplification *) 
         fun repeat (d,swl,stack) =
             let val (d',swl',freezeWorklist,activeMoves,worklistMoves,stack',moveList,
                      coalescedNodes,spillWorklist,ajdL) = simplify(d,swl,freezeWorklist, 
@@ -298,11 +358,46 @@ struct
        val simplifyWorklist' = Set.union(simplifyWorklist,freezeWorklist)
        val simplifyWorklist' = Set.union(simplifyWorklist',spillWorklist)
 
+       val freezeWorklist = Set.empty
+       val spillWorklist = Set.empty
+
+       (*val _ = printSet("simplifyWorklist",simplifyWorklist')*)
 
 
-       val _ = printSet("simplifyWorklist",simplifyWorklist')
+       (* 5. repeat simplification *)
        val selectStack' = repeat(degree,simplifyWorklist',selectStack)
-       val _ = (print "selectStack: ";app (fn item => print(Int.toString(item)^" ")) selectStack';print "\n")
+
+
+      (*val _ = (print "selectStack: ";app (fn item => print(Int.toString(item)^" ")) selectStack';print "\n")*)
+
+       (* 6. color the graph *)
+       val (spilledNodes,coloredNodes,color') = 
+                       assignColors(selectStack',adjList,coloredNodes,color,spilledNodes,coalescedNodes,alias)
+
+       fun checkAssignColors s =
+           let val t = Set.isEmpty s
+           in if not t
+              then (print "SpilledNodes not Empty!!!\n")
+              else ()
+           end
+       val _ = checkAssignColors spilledNodes
+       fun checkInitialColoredNodes (i,c) =
+           case Set.compare(i,c) of
+               EQUAL => ()
+             | _ => (print "initial set NOT match with coloredNodes!!\n")
+       val _ = checkInitialColoredNodes(initial',coloredNodes)
+
+       val _ = printSet("coloredNodes",coloredNodes)
+       val _ = printTemptoInt("color",color',initial')
+
+       (*
+       TODO: finish this, I changed Frame.register Temp.Table.table to Frame.registerStr Temp.Table.table
+       val color'' = foldl (fn (c,l) => (mapColor(color',c))::l) nil (!initial)
+       val _ = app (fn c => (print "colorList"; print(Int.toString(c)^" "); print "\n")) color''
+
+       fun makeRegisterTable (c,t) =
+           Temp.Table.enter(t,
+       *)
 
        in () end (* main *)
     in (main(moveList,worklistMoves,adjList,degree,adjSet);(Frame.tempMap,nil)) end
