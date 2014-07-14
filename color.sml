@@ -392,14 +392,19 @@ struct
 
        (*
        TODO: finish this, I changed Frame.register Temp.Table.table to Frame.registerStr Temp.Table.table
-       val color'' = foldl (fn (c,l) => (mapColor(color',c))::l) nil (!initial)
-       val _ = app (fn c => (print "colorList"; print(Int.toString(c)^" "); print "\n")) color''
-
-       fun makeRegisterTable (c,t) =
-           Temp.Table.enter(t,
        *)
 
-       in () end (* main *)
-    in (main(moveList,worklistMoves,adjList,degree,adjSet);(Frame.tempMap,nil)) end
+       val color'' = foldl (fn (c,l) => (mapColor(color',c))::l) nil (!initial)
+       (*val _ = app (fn c => (print "colorList"; print(Int.toString(c)^" "); print "\n")) color''*)
+
+       fun makeRegisterTable (n,t) =
+           let val reg = mapColor(color',n)
+           in Temp.Table.enter(t,n,Int.toString(reg)) end
+       val regt = Set.foldl makeRegisterTable Temp.Table.empty (initial')
+
+       val _ = (print "regt: "; Set.app (fn n => print(Int.toString(n)^": "^valOf(Temp.Table.look(regt,n))^" ")) (initial'); print "\n")
+
+       in (regt,color'') end (* main *)
+    in (main(moveList,worklistMoves,adjList,degree,adjSet)) end (* color *)
 
 end
