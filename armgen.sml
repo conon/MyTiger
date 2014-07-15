@@ -7,6 +7,7 @@ struct
     exception TestExp of string
     fun codegen frame (stm: Tree.stm) : Assem.instr list =
         let val ilist = ref (nil: A.instr list)
+            val esc = ref nil
 	    fun emit x = 
 	        ilist := x :: (!ilist)
         fun result gen =
@@ -65,10 +66,14 @@ struct
             result (fn r => emit(A.OPER{assem="ldr `d0, =" ^ Int.toString i ^ "\n", 
                                 src=[], dst=[r], jump=NONE}))
           | munchExp(T.CALL(name,args)) =
-            result (fn r => emit(A.OPER{assem="b `s0\n",
-                  src=munchExp(name)::munchArgs(0,args),dst=[], jump=NONE}))
+            let val a = munchArgs(0,args)
+                val n = munchExp name
+            in
+            result (fn r => emit(A.OPER{assem="",
+                  src=a,dst=[], jump=NONE}))
+            end
           | munchExp(T.NAME n) =
-            result (fn r => emit(A.LABEL{assem=Symbol.name(n) ^ ":\n", lab=n}))
+            result (fn r => emit(A.LABEL{assem="b " ^ Symbol.name(n)^"\n", lab=n}))
           | munchExp(T.MEM e) =
             result (fn r => emit(A.MOVE{assem="ldr `d0, `s0\n", src=munchExp e, dst=r}))
 	      | munchExp (T.TEMP t) = t
@@ -76,8 +81,22 @@ struct
 	      | munchExp _ = raise TestExp "Out os expressions\n"
 
        and munchArgs(i,args) =
-           map (fn x => munchExp x) args
-                   
+           let fun iter(i,args)  =
+                  case args of
+                      arg::args => if i >= Frame.K
+                                then (esc := i::(!esc);
+                                      (munchExp arg;iter(i+1,args)))
+                                else (munchExp arg)::iter(i+1,args)
+                    | nil => nil
+              fun regs esclst =
+                  case esclst of
+                      e::nil => "r"^Int.toString(e)
+                    | e::es => ("r"^Int.toString(e)^","; regs(es))
+                    | nil => ""
+              val nl = iter(i,args)
+              val regstr = regs(!esc)
+              val _ = emit(A.OPER{assem="stmia sp, {"^regstr^"}\n", src=[], dst=[], jump=NONE})
+          in nl end
 	in
 	    munchStm stm;
 	    rev(!ilist)
