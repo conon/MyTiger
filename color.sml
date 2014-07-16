@@ -95,7 +95,7 @@ struct
 	    val degree = Temp.Table.empty   (* Temp to int *)
         val moveList = Temp.Table.empty (* map temp to set of ints(temps) *)
         val alias = Temp.Table.empty (* temp to temp *)
-        val color = Temp.Table.empty (* temp to int *)
+        val color = Temp.Table.empty (* initial colors(machine registers) *)
         val K = length(Frame.registers)
 
 	    fun main (moveList,worklistMoves,adjList,degree,adjSet) =
@@ -121,7 +121,7 @@ struct
                     then (Temp.Table.enter(adjList,v,Set.add(adjListsetvset,u)),
                           Temp.Table.enter(degree,v,degreevint+1))
                     else (adjList,degree)
-                val t1 = (SetTuple.exists (fn {u=us,v=vs} => if u=us andalso v=vs then true else false) adjSet)
+                val t1 = (SetTuple.exists (fn {u=us,v=vs} => if (u=us andalso v=vs) orelse (u=vs andalso v=us) then true else false) adjSet)
                 val t2 = u <> v
                 (*val _ = print("t1 "^Bool.toString(t1)^" t2 "^Bool.toString(t2)^"\n")*)
             in
@@ -324,13 +324,11 @@ struct
                  Set.app (fn x => print (Int.toString(x)^" ")) (Set.fromList(!initial));
                  print "\n")
         val initial' = Set.fromList(!initial)
-        (*
         val _ = printSet("worklistMoves",initial')
         val _ = printTemptoSet("adjList",adjList,initial');
         val _ = printTemptoInt("degree",degree,initial');
         val _ = printTupleSet("adjSet",adjSet);
         val _ = printTemptoSet("moveList",moveList,initial');
-        *)
 
         (* 4. make initial worklist *)
         val (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistMoves) = foldl makeWorklist 

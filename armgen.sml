@@ -84,10 +84,12 @@ struct
            let fun iter(i,args)  =
                   case args of
                       arg::args => if i >= Frame.K
-                                then (esc := i::(!esc);
-                                      (munchExp arg;iter(i+1,args)))
-                                else (munchExp arg)::iter(i+1,args)
-                    | nil => nil
+                                   then (esc := i::(!esc);
+                                        (munchExp arg;iter(i+1,args)))
+                                   else (A.MOVE{assem="mov r"^Int.toString(i)^","^"`s0\n", 
+                                                src=munchExp arg, dst=i};
+                                        i::iter(i+1,args))
+                   | nil => nil
               fun regs esclst =
                   case esclst of
                       e::nil => "r"^Int.toString(e)

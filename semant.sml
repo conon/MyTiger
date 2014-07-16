@@ -1,4 +1,3 @@
-(* Noelia *)
 structure Semant : sig 
     val transProg : Absyn.exp -> Frame.frag list end =
 struct

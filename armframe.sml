@@ -54,7 +54,7 @@ struct
     val preRegisterTemps = [a1,a2,a3,a4,SP,LR,PC]
 
     val tempMap = List.foldl (fn ((key,value), table) => Temp.Table.enter(table,key,value)) Temp.Table.empty
-                                                            (ListPair.zip(registers',registersStr))
+                                                            (ListPair.zip(registers',registers))
 
     fun newFrame {name : Temp.label, formals : bool list} =
     (*app (fn f => print((Bool.toString f) ^ " ")) formals; print "\nfinish\n";*)
@@ -98,6 +98,7 @@ struct
         exp
       | makeseq (exp::exps) = Tree.SEQ(exp,(makeseq exps))
     
+    (*
     fun procEntryExit1 (frame,body) =
         let fun savecalle (reg::nil,offset) =
                 T.EXP(T.TEMP reg)
@@ -116,6 +117,13 @@ struct
 
     fun procEntryExit2(frame,body) =
         body @ [A.OPER{assem="", src=specialregs@callesaves, dst=[], jump=SOME []}]
+        
+    fun procEntryExit3(frame,instrs) =
+        let val p = "push {fp, lr}
+                     add fp, sp, #4
+                     sub sp, sp, #16"
+            val e = 
+            *)
         
 
 
