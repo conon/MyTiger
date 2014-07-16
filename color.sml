@@ -3,7 +3,7 @@ sig
     structure Frame : FRAME
     type allocation = Frame.registerStr Temp.Table.table
     val color : {instrs: Assem.instr list,
-                 initial : Frame.register list,
+                 initial : allocation,
                  spillCost : Graph.node -> int,
                  registers : Frame.register list}
                  -> allocation * Temp.temp list
@@ -77,7 +77,8 @@ struct
     fun color {instrs, initial, spillCost, registers} =
         let 
         val precolored = Set.fromList registers (* set of int *)
-        val initial = ref nil
+        val color = Set.foldl (fn (c,t) => Temp.Table.enter(t,c,c)) Temp.Table.empty precolored (* initial colors(machine registers) *)
+        val initial = ref nil (* initial colors(machine registers) *)
         val simplifyWorklist = Set.empty
         val freezeWorklist = Set.empty
         val spillWorklist = Set.empty
@@ -95,7 +96,6 @@ struct
 	    val degree = Temp.Table.empty   (* Temp to int *)
         val moveList = Temp.Table.empty (* map temp to set of ints(temps) *)
         val alias = Temp.Table.empty (* temp to temp *)
-        val color = Temp.Table.empty (* initial colors(machine registers) *)
         val K = length(Frame.registers)
 
 	    fun main (moveList,worklistMoves,adjList,degree,adjSet) =
@@ -285,25 +285,25 @@ struct
                     then nil
                     else k :: makeColors(k-1)
                 fun iter (n::selectStack,spilledNodes,coloredNodes,color) =
-                let val adjListn = mapAdjList(adjList,n)
-                    fun diffcolors(w,okColor) =
-                        let val g = getAlias(w,alias,coalescedNodes)
-                            val cp = Set.union(coloredNodes,precolored)
-                        in if Set.exists (fn x => if g = x then true else false) cp
-                           then let val mapc = mapColor(color,w) 
-                                in Set.difference(okColor,Set.singleton mapc) end
-                           else okColor
+                    let val adjListn = mapAdjList(adjList,n)
+                        fun diffcolors(w,okColor) =
+                            let val g = getAlias(w,alias,coalescedNodes)
+                                val cp = Set.union(coloredNodes,precolored)
+                            in if Set.exists (fn x => if g = x then true else false) cp
+                               then let val mapc = mapColor(color,g)
+                                    in Set.difference(okColor,Set.singleton mapc) end
+                               else okColor
+                            end
+                        val okColors = Set.fromList(makeColors(K-1))
+                        val okColors' = Set.foldl diffcolors okColors adjListn
+                        in if Set.isEmpty okColors'
+                           then iter(selectStack,Set.add(spilledNodes,n),coloredNodes,color)
+                           else let val SOME(c,okColors'') = List.getItem(Set.listItems okColors')
+                                    val color' = Temp.Table.enter(color,n,c)
+                                    val coloredNodes' = Set.add(coloredNodes,n)
+                                    val okColors''' = Set.fromList okColors''
+                                in iter(selectStack,spilledNodes,coloredNodes',color') end
                         end
-                    val okColors = Set.fromList(makeColors(K-1))
-                    val okColors' = Set.foldl diffcolors okColors adjListn
-                    in if Set.isEmpty okColors'
-                       then iter(selectStack,Set.add(spilledNodes,n),coloredNodes,color)
-                       else let val SOME(c,okColors'') = List.getItem(Set.listItems okColors')
-                                val color' = Temp.Table.enter(color,n,c)
-                                val coloredNodes' = Set.add(coloredNodes,n)
-                                val okColors''' = Set.fromList okColors''
-                            in iter(selectStack,spilledNodes,coloredNodes',color') end
-                    end
                   | iter(nil,spilledNodes,coloredNodes,color) =
                         (spilledNodes,coloredNodes,color)
                  val (spilledNodes,coloredNodes,color) = iter(selectStack,spilledNodes,coloredNodes,color)
@@ -324,11 +324,13 @@ struct
                  Set.app (fn x => print (Int.toString(x)^" ")) (Set.fromList(!initial));
                  print "\n")
         val initial' = Set.fromList(!initial)
+        (*
         val _ = printSet("worklistMoves",initial')
         val _ = printTemptoSet("adjList",adjList,initial');
         val _ = printTemptoInt("degree",degree,initial');
         val _ = printTupleSet("adjSet",adjSet);
         val _ = printTemptoSet("moveList",moveList,initial');
+        *)
 
         (* 4. make initial worklist *)
         val (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistMoves) = foldl makeWorklist 
@@ -367,6 +369,7 @@ struct
 
 
       (*val _ = (print "selectStack: ";app (fn item => print(Int.toString(item)^" ")) selectStack';print "\n")*)
+       (*val _ = if color = Temp.Table.empty then print "HOLA\n" else print "NO\n"*)
 
        (* 6. color the graph *)
        val (spilledNodes,coloredNodes,color') = 

@@ -54,7 +54,7 @@ struct
     val preRegisterTemps = [a1,a2,a3,a4,SP,LR,PC]
 
     val tempMap = List.foldl (fn ((key,value), table) => Temp.Table.enter(table,key,value)) Temp.Table.empty
-                                                            (ListPair.zip(registers',registers))
+                                                            (ListPair.zip(registers',registers'))
 
     fun newFrame {name : Temp.label, formals : bool list} =
     (*app (fn f => print((Bool.toString f) ^ " ")) formals; print "\nfinish\n";*)

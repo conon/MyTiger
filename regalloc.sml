@@ -22,7 +22,7 @@ struct
 	    SOME n => n
 	  | NONE => raise Implementation
     fun alloc (instrs, frame) =
-        let val initial' = Frame.initregisters
+        let val initial' = Temp.Table.empty
             val spillCost' = (fn x => 1)
             val registers' = Frame.registers
             val (alloc,templist) = Color.color{instrs=instrs,initial=initial',

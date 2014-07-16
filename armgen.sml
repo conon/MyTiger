@@ -85,19 +85,21 @@ struct
                   case args of
                       arg::args => if i >= Frame.K
                                    then (esc := i::(!esc);
-                                        (munchExp arg;iter(i+1,args)))
-                                   else (A.MOVE{assem="mov r"^Int.toString(i)^","^"`s0\n", 
-                                                src=munchExp arg, dst=i};
+                                         emit(A.MOVE{assem="mov r"^Int.toString(i)^", `s0\n", 
+                                                     src=munchExp arg, dst=i});
+                                         i::iter(i+1,args))
+                                   else (emit(A.MOVE{assem="mov r"^Int.toString(i)^", `s0\n", 
+                                                src=munchExp arg, dst=i});
                                         i::iter(i+1,args))
                    | nil => nil
               fun regs esclst =
                   case esclst of
                       e::nil => "r"^Int.toString(e)
-                    | e::es => ("r"^Int.toString(e)^","; regs(es))
+                    | e::es => "r"^Int.toString(e)^","^regs(es)
                     | nil => ""
               val nl = iter(i,args)
               val regstr = regs(!esc)
-              val _ = emit(A.OPER{assem="stmia sp, {"^regstr^"}\n", src=[], dst=[], jump=NONE})
+              val _ = if List.null(!esc) then () else emit(A.OPER{assem="stmia sp, {"^regstr^"}\n", src=[], dst=[], jump=NONE})
           in nl end
 	in
 	    munchStm stm;
