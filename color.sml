@@ -76,9 +76,15 @@ struct
 
     fun color {instrs, initial, spillCost, registers} =
         let 
-        val precolored = Set.fromList registers (* set of int *)
-        val color = Set.foldl (fn (c,t) => Temp.Table.enter(t,c,c)) Temp.Table.empty precolored (* initial colors(machine registers) *)
-        val initial = ref nil (* initial colors(machine registers) *)
+        val precolored = Set.union(Set.fromList(registers),Set.fromList(Frame.registerTemps)) (* set of int *)
+        val color = Set.foldl (fn (c,t) => Temp.Table.enter(t,c,c)) Frame.tempMap precolored (* initial colors(machine registers) *)
+        (*
+        val _ =  (print "initColor\n";
+        Set.app (fn x => let val k = case Temp.Table.look(color,x) of SOME x => x | NONE => ~1
+         in print(Temp.makestring(x)^"->"^Int.toString(k)^"\n") end) 
+           (Set.union(precolored,(Set.fromList(Frame.registerTemps)))))
+        *)
+        val initial = ref nil 
         val simplifyWorklist = Set.empty
         val freezeWorklist = Set.empty
         val spillWorklist = Set.empty
@@ -320,17 +326,15 @@ struct
         val (moveList,worklistMoves,adjList,degree,adjSet) = foldl build (moveList,
                                                       worklistMoves,adjList,degree,adjSet) nodes
 
-        val _ = (print "initials: \n";
+        (*val _ = (print "initials: \n";
                  Set.app (fn x => print (Int.toString(x)^" ")) (Set.fromList(!initial));
-                 print "\n")
+                 print "\n")*)
         val initial' = Set.fromList(!initial)
-        (*
         val _ = printSet("worklistMoves",initial')
         val _ = printTemptoSet("adjList",adjList,initial');
         val _ = printTemptoInt("degree",degree,initial');
         val _ = printTupleSet("adjSet",adjSet);
         val _ = printTemptoSet("moveList",moveList,initial');
-        *)
 
         (* 4. make initial worklist *)
         val (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistMoves) = foldl makeWorklist 
@@ -403,7 +407,7 @@ struct
            in Temp.Table.enter(t,n,Int.toString(reg)) end
        val regt = Set.foldl makeRegisterTable Temp.Table.empty (initial')
 
-       val _ = (print "regt: "; Set.app (fn n => print(Int.toString(n)^": "^valOf(Temp.Table.look(regt,n))^" ")) (initial'); print "\n")
+       (*val _ = (print "regt: "; Set.app (fn n => print(Int.toString(n)^": "^valOf(Temp.Table.look(regt,n))^" ")) (initial'); print "\n") *)
 
        in (regt,color'') end (* main *)
     in (main(moveList,worklistMoves,adjList,degree,adjSet)) end (* color *)

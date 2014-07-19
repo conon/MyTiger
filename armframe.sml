@@ -13,10 +13,6 @@ struct
 
     val registersStr = ["a1","a2","a3","a4","v1","v2","v3","v4",
                      "v5","v6","v7","FP","IP","SP","LR","PC"]
-    (* registers for use *)
-    val registers = [0,1,2,3,4,5,6,7,9,10,11,12,13]
-    val registers' = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-    val initregisters = [0,1,2,3,11,13,14,15]
                      
     val a1 = Temp.newtemp() (* argument/result scratch register  *)
     val a2 = Temp.newtemp() (* argument/result scratch register *)
@@ -36,8 +32,7 @@ struct
     val PC = Temp.newtemp() (* program counter *)
 
     val RV = a1 (* return value *)
-    val SC = v1 (* save calle register*)
-    val FP = LR
+    val FP = IP
 
     (* register lists *)
     val argregs = [a1,a2,a3,a4]
@@ -52,27 +47,29 @@ struct
     val registerTemps = [a1,a2,a3,a4,v1,v2,v3,v4,
                          v5,v6,v7,v8,IP,SP,LR,PC]
     val preRegisterTemps = [a1,a2,a3,a4,SP,LR,PC]
+    val registers = [0,1,2,3,4,5,6,7,9,10,11,12,13]
+    val registers' = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
 
     val tempMap = List.foldl (fn ((key,value), table) => Temp.Table.enter(table,key,value)) Temp.Table.empty
-                                                            (ListPair.zip(registers',registers'))
+                                                            (ListPair.zip(registerTemps,registers'))
 
     fun newFrame {name : Temp.label, formals : bool list} =
     (*app (fn f => print((Bool.toString f) ^ " ")) formals; print "\nfinish\n";*)
-        let fun formalsiter (fs,offset,counter) =
-	       case fs of
-	           f::fs => (case f of
-		                     true => InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter)
-			               | false => if counter > K
-			                          then InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter+1)
-					                  else InReg (Temp.newtemp()) :: formalsiter(fs,offset,counter+1))
-             | nil => nil
-           val ff = formalsiter(formals,0,0)
-	 in
-         (*app (fn a => case a of 
-                            InFrame k => (print ("FRAME " ^ (Int.toString k) ^ "\n"))
-                          | InReg r => (print ("REGISTER" ^ (Int.toString r) ^ "\n"))) ff; *)
-	     {name=name, formals=formalsiter(formals,0,0), locals=ref 0}
-	 end
+        let fun formalsiter (fs,offset,counter,args) =
+	       case (fs,args) of
+	           (f::fs,a::args) => (case f of
+                         true => (print "INFRAME1_NEW\n";InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter,a::args))
+                       | false => if counter > K
+                                  then (print "INFRAME2_NEW\n";InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter+1,a::args))
+                                  else (print "INREG_NEW\n";InReg (a) :: formalsiter(fs,offset,counter+1,args)))
+             | (nil,args) => nil
+             | (nil,nil) => nil
+        in
+            (*app (fn a => case a of 
+                               InFrame k => (print ("FRAME " ^ (Int.toString k) ^ "\n"))
+                             | InReg r => (print ("REGISTER" ^ (Int.toString r) ^ "\n"))) ff; *)
+            {name=name, formals=List.rev(formalsiter(formals,0,0,argregs)), locals=ref 0}
+        end
     
     fun name {name = n, formals = _, locals=_} = n
     
@@ -81,13 +78,13 @@ struct
     fun allocLocal {name =_, formals =_, locals = l} var =
     (* in case of escaping locals goes to lower addresses *)
 	        case var of
-                false => InReg (Temp.newtemp())
-              | true => (l := !l+1; InFrame (~(!l) * wordSize))
+                false => (print "INREG_ALLOC\n";InReg (Temp.newtemp()))
+              | true => (print "INFRAME_ALLOC\n";l := !l+1; InFrame (~(!l) * wordSize))
 
     fun exp facc fp =
         case facc of
-            InFrame k => (print "INFRAME\n";Tree.BINOP(Tree.PLUS, fp, Tree.CONST k))
-          | InReg t => (print "INREG\n";Tree.TEMP t)
+            InFrame k => (print "INFRAME_EXP\n";Tree.BINOP(Tree.PLUS, fp, Tree.CONST k))
+          | InReg t => (print "INREG_EXP\n";Tree.TEMP t)
 
     fun externalCall (s,args) =
         Tree.CALL(Tree.NAME(Temp.namedlabel s), args)
@@ -97,27 +94,20 @@ struct
       | makeseq [exp] =
         exp
       | makeseq (exp::exps) = Tree.SEQ(exp,(makeseq exps))
-    
-    (*
-    fun procEntryExit1 (frame,body) =
-        let fun savecalle (reg::nil,offset) =
-                T.EXP(T.TEMP reg)
-              | savecalle (reg::regs,offset) =
-                T.SEQ(T.MOVE(T.TEMP SP,T.BINOP(T.PLUS,T.CONST (offset*wordSize),T.TEMP reg)),savecalle(regs,offset+1))
-            fun restorecalle (reg::nil,offset) =
-                T.EXP(T.TEMP reg)
-              | restorecalle (reg::regs,offset) =
-                T.SEQ(T.MOVE(T.TEMP reg,T.BINOP(T.PLUS,T.CONST (offset*wordSize),T.TEMP SP)),
-                      restorecalle(regs,offset+1))
-        in
-            T.SEQ(savecalle(callesaves,0),    (* save all calle-saved registers to the stack *)
-            T.SEQ(T.MOVE(T.TEMP RV,body),      (* Evaluate body and store the result to the Return Value register *)
-                  restorecalle(callesaves,0)))(* restore calle-saves registers *)
-        end
 
+    fun procEntryExit1(frame,body) =
+        T.SEQ(T.MOVE(T.TEMP 4, T.TEMP 0),
+        T.SEQ(T.MOVE(T.TEMP 5, T.TEMP 1),
+        T.SEQ(T.MOVE(T.TEMP 6, T.TEMP 2),
+        T.SEQ(T.MOVE(T.TEMP 7, T.TEMP 3),
+              T.MOVE(T.TEMP 0, body)))))   (* Evaluate body and store the result to the Return Value register *)
+
+(*
     fun procEntryExit2(frame,body) =
         body @ [A.OPER{assem="", src=specialregs@callesaves, dst=[], jump=SOME []}]
+        *)
         
+        (*
     fun procEntryExit3(frame,instrs) =
         let val p = "push {fp, lr}
                      add fp, sp, #4
@@ -128,12 +118,6 @@ struct
 
 
     fun string (lab,s) = "" (* TODO: dummy *)
-
-    (*
-    fun mapspecialregs temp =
-        case Temp.Table.look(tempMap, temp) of
-	    SOME v => ""
-	  | NONE => "" *)
 
 end
 

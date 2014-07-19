@@ -22,6 +22,8 @@ struct
 	        emit(A.LABEL{assem=Symbol.name(lab) ^ ":\n", lab=lab})
           | munchStm (T.JUMP(exp,labelList)) =
             emit(A.OPER{assem="b `j0\n",src=[],dst=[],jump=SOME labelList})
+          | munchStm(T.MOVE(T.TEMP t1, T.TEMP t2)) =
+            emit(A.MOVE{assem="mov `d0, `s0\n",src=t2, dst=t1})
           | munchStm(T.MOVE(T.TEMP t, e)) =
             emit(A.MOVE{assem="mov `d0, `s0\n", src=munchExp e, dst=t})
           | munchStm(T.MOVE(T.MEM e1,e2)) =
@@ -83,7 +85,7 @@ struct
        and munchArgs(i,args) =
            let fun iter(i,args)  =
                   case args of
-                      arg::args => if i >= Frame.K
+                      arg::args => if i >= Frame.K (* number of arguments *)
                                    then (esc := i::(!esc);
                                          emit(A.MOVE{assem="mov r"^Int.toString(i)^", `s0\n", 
                                                      src=munchExp arg, dst=i});

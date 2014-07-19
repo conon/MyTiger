@@ -64,6 +64,7 @@ fun newLevel {parent=lev, name=n, formals=f} =
 	    Level (fr, lev, ref ())
     end
 
+(* FIXME: maybe i drop the variable instead of static link *)
 fun formals lev =
     case lev of
 	    Level(fr,_,_) => let val fracc = Frame.formals fr
@@ -109,6 +110,17 @@ fun constIntVar i =
 
 fun simpleVar (access, currentlevel) =
     let val (varlevel,varframeaccess) = access
+        val (varframe,varparentlevel,varframeid) = case currentlevel of 
+                                                       Level l => l
+                                                     | StartLevel => raise StartLevelExc
+        val fp = Tree.TEMP(Frame.FP)
+    in
+        Ex (Frame.exp varframeaccess fp)
+    end
+
+(*
+fun simpleVar (access, currentlevel) =
+    let val (varlevel,varframeaccess) = access
         val varunique = case varlevel of 
                             Level(_,_,unique) => unique
                           | StartLevel => raise StartLevelExc
@@ -121,6 +133,7 @@ fun simpleVar (access, currentlevel) =
 	          | StartLevel => raise StartLevelExc
         val afp = calcfraddr currentlevel
         in Ex (Frame.exp varframeaccess afp) end
+*)
 
 fun nilVar () =
     Ex (T.MEM (T.CONST 0))
@@ -257,8 +270,8 @@ fun forExp (var, lo, hi, body, ldone) =
     end
 
 fun procEntryExit {level=lev, body=exp} =
-    (* TODO: check *)
     case lev of
-        Level (fr,_,_) => frags := Frame.PROC{body=unNx(exp), frame=fr} :: (!frags)
+        Level (fr,_,_) => let (* val body' = Frame.procEntryExit1(fr,unEx(exp))*)
+                          in frags := Frame.PROC{body=unNx(exp), frame=fr} :: (!frags) end
       | _ => raise StartLevelExc
-    end
+end

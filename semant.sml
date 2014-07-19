@@ -61,6 +61,7 @@ fun checkEqualIf(lhs,rhs) =
 fun transProg ast =
     let
 	val nested = ref 0
+	val levs = ref nil
         (* the transTy functions translate Absyn.ty types to Types.ty types so they can be put on the
                symbol table(enviroment) and also ensures that the (rhs)types was already defined
                (the only predefined types are INT and STRING) *)	
@@ -217,23 +218,22 @@ fun transProg ast =
 		val resultsty' = map resty resultsty (* a list of results type *)
 		val rp = ListPair.zip(resultsty',params')
 		val nrp = ListPair.zip(names,rp)
-		val levs = ref nil
-	        fun addf((n ,(r , p : {name : Symbol.symbol, ty : Types.ty, escape : bool ref} list)), venv) = 
-		    let fun formalstobool f =
-		            case f of
-			        f::fs => (!f) :: formalstobool(fs)
-			      | nil => nil
-		    in    if !anyErrors
-			  then venv
-			  else let val formals = map #escape p
-			           val formals' = formalstobool formals
-			           val label' = Temp.newlabel()
-			           val lev' = Tr.newLevel {parent=lev, name=label',
-			                                   formals = formals'} 
-				   val _ = levs := !levs @ [lev']
-			       in Symbol.enter(venv, n, Env.FunEntry{level=lev', label=label',
-				                                     formals = map #ty p, result = r}) end
-		    end
+        fun addf((n ,(r , p : {name : Symbol.symbol, ty : Types.ty, escape : bool ref} list)), venv) = 
+        let fun formalstobool f =
+                case f of
+                f::fs => (!f) :: formalstobool(fs)
+              | nil => nil
+        in    if !anyErrors
+          then venv
+          else let val formals = map #escape p
+                   val formals' = formalstobool formals
+                   val label' = Temp.newlabel()
+                   val lev' = Tr.newLevel {parent=lev, name=label',
+                                           formals = formals'} 
+               val _ = levs := !levs @ [lev']
+               in Symbol.enter(venv, n, Env.FunEntry{level=lev', label=label',
+                                                 formals = map #ty p, result = r}) end
+        end
 	        (* 3. update the current enviroment with the function name which contains: the result type
 				and all the pairs(name,type) of the parameters as funentry *)
 		val venv' = foldl addf venv nrp
