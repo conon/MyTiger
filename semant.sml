@@ -230,7 +230,7 @@ fun transProg ast =
                    val label' = Temp.newlabel()
                    val lev' = Tr.newLevel {parent=lev, name=label',
                                            formals = formals'} 
-               val _ = levs := !levs @ [lev']
+               val _ = levs := lev'::(!levs)
                in Symbol.enter(venv, n, Env.FunEntry{level=lev', label=label',
                                                  formals = map #ty p, result = r}) end
         end

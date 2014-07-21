@@ -64,14 +64,15 @@ fun newLevel {parent=lev, name=n, formals=f} =
 	    Level (fr, lev, ref ())
     end
 
-(* FIXME: maybe i drop the variable instead of static link *)
 fun formals lev =
     case lev of
-	    Level(fr,_,_) => let val fracc = Frame.formals fr
-                             fun aux fracc =
-                                 (lev,fracc)
-                             val acc = map aux fracc
-                         in List.drop (acc,0) end (* drop the static link *)
+	    Level(fr,_,_) => let val formals = Frame.formals fr
+                             fun aux fs =
+                                case fs of
+                                    f::fs => (lev,f)::aux(fs)
+                                  | nil => nil
+                             val acc = aux formals
+                         in tl(acc) end (* drop the static link *)
       | StartLevel => raise StartLevelExc
 
 fun allocLocal lev esc =
@@ -108,17 +109,24 @@ fun concatExps (s,e) =
 fun constIntVar i =
     Ex (T.CONST i)
 
+(*
 fun simpleVar (access, currentlevel) =
     let val (varlevel,varframeaccess) = access
-        val (varframe,varparentlevel,varframeid) = case currentlevel of 
+        val fp = Tree.TEMP(Frame.FP)
+        fun calcaddr curlev =
+            let val (varframe,varparentlevel,varframeid) = case curlev of 
                                                        Level l => l
                                                      | StartLevel => raise StartLevelExc
-        val fp = Tree.TEMP(Frame.FP)
+            in if varparentlevel = curlev
+               then fp
+               else T.MEM(calcaddr varparentlevel)
+            end
+       val path = calcaddr currentlevel
     in
         Ex (Frame.exp varframeaccess fp)
     end
+*)
 
-(*
 fun simpleVar (access, currentlevel) =
     let val (varlevel,varframeaccess) = access
         val varunique = case varlevel of 
@@ -133,7 +141,6 @@ fun simpleVar (access, currentlevel) =
 	          | StartLevel => raise StartLevelExc
         val afp = calcfraddr currentlevel
         in Ex (Frame.exp varframeaccess afp) end
-*)
 
 fun nilVar () =
     Ex (T.MEM (T.CONST 0))
