@@ -22,6 +22,9 @@ struct
 	        emit(A.LABEL{assem=Symbol.name(lab) ^ ":\n", lab=lab})
           | munchStm (T.JUMP(exp,labelList)) =
             emit(A.OPER{assem="b `j0\n",src=[],dst=[],jump=SOME labelList})
+          | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.CONST i)), e)) =
+            emit(A.OPER{assem="str `s0, [`d0, #"^Int.toString(i)^"]"^"\n", 
+                        src=[munchExp e], dst=[t], jump=NONE})
           | munchStm(T.MOVE(T.TEMP t1, T.TEMP t2)) =
             emit(A.MOVE{assem="mov `d0, `s0\n",src=t2, dst=t1})
           | munchStm(T.MOVE(T.TEMP t, e)) =
@@ -76,8 +79,11 @@ struct
             end
           | munchExp(T.NAME n) =
             result (fn r => emit(A.LABEL{assem="b " ^ Symbol.name(n)^"\n", lab=n}))
+          | munchExp(T.MEM(T.BINOP(T.PLUS,e,T.CONST i))) =
+            result (fn r => emit(A.MOVE{assem="ldr `d0, [`s0, #"^Int.toString(i)^"]"^"\n", 
+                                        src=munchExp e, dst=r}))
           | munchExp(T.MEM e) =
-            result (fn r => emit(A.MOVE{assem="ldr `d0, `s0\n", src=munchExp e, dst=r}))
+            result (fn r => emit(A.MOVE{assem="ldr `d0, [`s0]"^"\n", src=munchExp e, dst=r}))
 	      | munchExp (T.TEMP t) = t
 
 	      | munchExp _ = raise TestExp "Out os expressions\n"

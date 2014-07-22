@@ -32,7 +32,7 @@ struct
     val PC = Temp.newtemp() (* program counter *)
 
     val RV = a1 (* return value *)
-    val FP = IP
+    val FP = v8 
 
     (* register lists *)
     val argregs = [a1,a2,a3,a4]
@@ -59,16 +59,15 @@ struct
 	       case (fs,args) of
 	           (f::fs,a::args) => (case f of
                          true => (print "INFRAME1_NEW\n";InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter,a::args))
-                       | false => if counter > K
-                                  then (print "INFRAME2_NEW\n";InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter+1,a::args))
-                                  else (print "INREG_NEW\n";InReg (a) :: formalsiter(fs,offset,counter+1,args)))
-             | (nil,args) => nil
+                       | false => (print "INREG_NEW\n";InReg (a) :: formalsiter(fs,offset,counter+1,args)))
              | (nil,nil) => nil
+             | (f::fs,nil) => (print "INFRAME2_NEW\n";InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter+1,nil))
+             | (nil,args) => nil
         in
             (*app (fn a => case a of 
                                InFrame k => (print ("FRAME " ^ (Int.toString k) ^ "\n"))
                              | InReg r => (print ("REGISTER" ^ (Int.toString r) ^ "\n"))) ff; *)
-            {name=name, formals=List.rev(formalsiter(formals,0,0,argregs)), locals=ref 0}
+            {name=name, formals=formalsiter(formals,0,0,argregs), locals=ref 0}
         end
     
     fun name {name = n, formals = _, locals=_} = n
@@ -83,7 +82,7 @@ struct
 
     fun exp facc fp =
         case facc of
-            InFrame k => (print "INFRAME_EXP\n";Tree.BINOP(Tree.PLUS, fp, Tree.CONST k))
+            InFrame k => (print "INFRAME_EXP\n";Tree.MEM(Tree.BINOP(Tree.PLUS, fp, Tree.CONST k)))
           | InReg t => (print "INREG_EXP\n";Tree.TEMP t)
 
     fun externalCall (s,args) =
