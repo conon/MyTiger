@@ -30,7 +30,7 @@ sig
     val cond2Exp : exp * exp * exp -> exp (*exp1:the condition,exp2:then expression,exp3:else expression*)
     val createRecord : exp list * int -> exp 
     val createArray : exp * exp -> exp
-    val callFunction : string * level * exp list -> exp
+    val callFunction : string * level * level * exp list -> exp
     val assign : exp * exp -> exp (*exp1:lvalue,exp2:rvalue*)
     val breakLoop : exp -> exp (* returns the done label exp *)
     val initLoop : exp (* the done label *)

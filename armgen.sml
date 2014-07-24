@@ -121,9 +121,10 @@ struct
                                          emit(A.MOVE{assem="mov r"^Int.toString(i)^", `s0\n", 
                                                      src=munchExp arg, dst=i});
                                          i::iter(i+1,args))
-                                   else (emit(A.MOVE{assem="mov r"^Int.toString(i)^", `s0\n", 
+                                   else (esc := i::(!esc);
+                                         emit(A.MOVE{assem="mov r"^Int.toString(i)^", `s0\n", 
                                                 src=munchExp arg, dst=i});
-                                        i::iter(i+1,args))
+                                         i::iter(i+1,args))
                    | nil => nil
               fun regs esclst =
                   case esclst of

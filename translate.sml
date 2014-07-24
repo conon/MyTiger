@@ -221,15 +221,27 @@ fun createRecord (fexps,n) =
 fun createArray (size,init) =
     Ex (Frame.externalCall("initArray",[unEx size,unEx init]))
 
-fun callFunction (s,l,args) =
-    (*TODO: check *)
-    let (*val facc = getStaticLink(l)
-        val sl = Frame.exp facc (T.TEMP Frame.FP)
-        val args = Ex(sl)::args*)
+fun callFunction (s,curlev,calledlev,args) =
+    let 
+        val curunique = case curlev of
+                            Level (_,_,u) => u
+                          | StartLevel => raise StartLevelExc
+        fun calcfraddr level =
+            case level of
+                Level(calledfr,calledpl,calledunique) =>
+                    if curunique = calledunique
+                    then level
+                    else calcfraddr(calledpl)
+	          | StartLevel => raise StartLevelExc
+    val facc = getStaticLink(calcfraddr calledlev)
+    val sl = Frame.exp facc (T.TEMP Frame.FP)
+    (* TODO: 1. do(or not) something with sl 
+             2. Try to pass the arguments here rather than in armgen.sml *)
 	fun uex arg =
 	    unEx arg
 	val args' = map uex args
-    in Ex (T.CALL(T.NAME (Temp.namedlabel(s)), args')) end
+    (*val test = T.MOVE(T.TEMP (Temp.newtemp()), unEx(hd args))*)
+    in Ex(T.CALL(T.NAME (Temp.namedlabel(s)), args')) end
 
 fun assign (lvalue,rvalue) =
     Nx (T.MOVE(unEx lvalue,unEx rvalue))
@@ -279,6 +291,9 @@ fun forExp (var, lo, hi, body, ldone) =
 fun procEntryExit {level=lev, body=exp} =
     case lev of
         Level (fr,_,_) => let (* val body' = Frame.procEntryExit1(fr,unEx(exp))*)
-                          in frags := Frame.PROC{body=unNx(exp), frame=fr} :: (!frags) end
+                          in (frags := Frame.PROC{body=unNx(exp), frame=fr} :: (!frags);
+                              print("FRAGS length: "^Int.toString(length (!frags))^"\n"); 
+                              print("Formals length: "^Int.toString(length(Frame.formals fr))^"\n"))
+                          end
       | _ => raise StartLevelExc
 end
