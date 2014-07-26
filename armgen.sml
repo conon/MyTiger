@@ -112,8 +112,34 @@ struct
                then nil
                else iter(1,args)
            end
+           
+       and munchArgs (i,args) =
+           let fun iter (i,args) =
+               let val r = List.nth(Frame.registers,i)
+               in
+                  case args of
+                      arg::args => (emit(A.MOVE{assem="mov r"^Int.toString(i-1)^", `s0"^"\n", 
+                                               src=munchExp arg, dst=r});
+                                    r::iter(i+1,args))
+                    | nil => nil
+               end
+               fun regs esclst =
+                  case esclst of
+                      e::nil => "r"^Int.toString(e)
+                    | e::es => "r"^Int.toString(e)^","^regs(es)
+                    | nil => ""
+               val nl = iter(1,args)
+               val escs = Frame.getEsc()  (* TODO: *)
+               val esc = hd escs handle Empty => nil
+               val _ = Frame.removeEsc()
+               val regstr = regs esc
+               val _ = if List.null(esc) 
+                       then () 
+                       else emit(A.OPER{assem="stmia sp, {"^regstr^"}\n", src=[], dst=[], jump=NONE})
+           in nl end
 
-       and munchArgs(i,args) =
+
+       and munchArgs3(i,args) =
            let fun iter(i,args)  =
                   case args of
                       arg::args => if i >= Frame.K (* number of arguments *)

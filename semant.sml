@@ -292,40 +292,41 @@ fun transProg ast =
                   | trexp (A.AssignExp{var, exp, pos}) =
                     let val {exp=lval,ty= trty} = trvar(var,lev)
                         val {exp=rval,ty= expty} = trexp(exp)
-	            in
-		        if checkEqual(trty,expty)
-		        then {exp = Tr.assign(lval,rval), ty = Types.UNIT}
-		        else (error pos "wrong type value assiged to variable";
-                              {exp=Tr.dummy, ty = Types.UNIT})
-	            end
+                    in
+                        if checkEqual(trty,expty)
+                        then {exp = Tr.assign(lval,rval), ty = Types.UNIT}
+                        else (error pos "wrong type value assiged to variable";
+                                      {exp=Tr.dummy, ty = Types.UNIT})
+                    end
                   | trexp (A.CallExp{func, args, pos}) =
                     let fun iter ((argtype,formaltype),exps) =
                             let val {exp = e, ty = argtype'} = trexp(argtype)
                             in
-				if actual_ty argtype' = actual_ty formaltype
-				then exps@[e]
-				else (error pos "expression type does not match of declaration"; exps)
+                                if actual_ty argtype' = actual_ty formaltype
+                                then exps@[e]
+                                else (error pos "expression type does not match of declaration"; exps)
                             end
                     in
-			(case Symbol.look(venv, func) of
-                             SOME(Env.FunEntry{level, label, formals,result}) => 
-		             let val res = if length(args) > length(formals)
-				           then (error pos "number of arguments do not match those of declaration";nil)
-					   else if length(args) < length(formals)
-                                           then (error pos "number of declared parameters do not match arguments";nil)
-					   else let val pr = ListPair.zip(args,formals) in foldl iter nil pr end
-                             in
-			         if !anyErrors
-				 then {exp=Tr.dummy, ty = Types.UNIT}
-				 else if result = Types.UNIT
-				 then {exp=Tr.callFunction(Symbol.name func,lev,res), ty = Types.UNIT}
-				 else {exp=Tr.callFunction(Symbol.name func,lev,res), ty = result}
-			     end
-			   | SOME (Env.VarEntry{access=_, ty=ty}) => (error pos ("identifier " ^ Symbol.name func ^
-  										 " is bound to a variable");
-								      {exp=Tr.dummy, ty = Types.UNIT})
-			   | NONE => (error pos ("unbound identifier " ^ Symbol.name func);
-			              {exp=Tr.dummy, ty = Types.UNIT}))
+                        (case Symbol.look(venv, func) of
+                             SOME(Env.FunEntry{level, label, formals, result}) => 
+                                 let val res = if length(args) > length(formals)
+                                               then (error pos "number of arguments do not match those of declaration";nil)
+                                               else if length(args) < length(formals)
+                                               then (error pos "number of declared parameters do not match arguments";nil)
+                                               else let val pr = ListPair.zip(args,formals) in foldl iter nil pr end
+                                 in
+                                     if !anyErrors
+                                     then {exp=Tr.dummy, ty = Types.UNIT}
+                                     else if result = Types.UNIT
+                                          (* lev -> current level , level -> called function level *)
+                                     then {exp=Tr.callFunction(Symbol.name func,lev,level,res), ty = Types.UNIT}
+                                     else {exp=Tr.callFunction(Symbol.name func,lev,level,res), ty = result}
+                                 end
+                           | SOME (Env.VarEntry{access=_, ty=ty}) => (error pos ("identifier " ^ Symbol.name func ^
+                                                     " is bound to a variable");
+                                                  {exp=Tr.dummy, ty = Types.UNIT})
+                           | NONE => (error pos ("unbound identifier " ^ Symbol.name func);
+                                      {exp=Tr.dummy, ty = Types.UNIT}))
                     end
                   | trexp (A.RecordExp{fields, typ, pos}) =
 		    let fun iterFields((s1,e,p1)::xs, (s2,decty)::ys, count, exps) =
@@ -514,7 +515,7 @@ fun transProg ast =
         let val startLevel = Tr.newLevel {parent=Tr.outermost, name=Temp.newlabel(), formals=nil}
 	    val breaklabel = Tr.initLoop
 	    val {exp=e,ty=_} = transExp(Env.base_venv, Env.base_tenv, ast, startLevel, breaklabel, nil)
-	    val _ = Tr.procEntryExit{level=startLevel, body=e}
+        val _ = Tr.procEntryExit {level=startLevel, body=e}
 	in 
 	    (*Tr.printTree e;*)Tr.getResult()
 	end

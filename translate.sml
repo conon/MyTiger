@@ -233,14 +233,19 @@ fun callFunction (s,curlev,calledlev,args) =
                     then level
                     else calcfraddr(calledpl)
 	          | StartLevel => raise StartLevelExc
-    val facc = getStaticLink(calcfraddr calledlev)
+    val calledfunlev = calcfraddr calledlev
+    val calledfunframe = case calledfunlev of
+                             Level (fr,_,_) => fr
+                           | StartLevel => raise StartLevelExc
+    val facc = getStaticLink(calledfunlev)
     val sl = Frame.exp facc (T.TEMP Frame.FP)
     (* TODO: 1. do(or not) something with sl 
              2. Try to pass the arguments here rather than in armgen.sml *)
 	fun uex arg =
 	    unEx arg
 	val args' = map uex args
-    (*val test = T.MOVE(T.TEMP (Temp.newtemp()), unEx(hd args))*)
+    val _ = Frame.findEscArgs calledfunframe
+    val _ = print("Call length: "^Int.toString(length(Frame.getEsc ()))^"\n")
     in Ex(T.CALL(T.NAME (Temp.namedlabel(s)), args')) end
 
 fun assign (lvalue,rvalue) =

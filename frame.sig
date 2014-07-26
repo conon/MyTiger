@@ -21,6 +21,15 @@ sig
     val allocLocal : frame -> bool -> access
     val string : Temp.label * string -> string 
     
+    val getEsc : unit -> int list list (* list of escaping arguments *)
+    val removeEsc : unit -> unit (* removes evaluated list of escaping arguments *)
+    (* The current organization of the frame makes it hard to evaluate
+       escaping arguments, this function makes all the moves to "first K"
+       or moves escaping and "more than K" values to outgoing
+       registers in stack 
+    val passingArguments : frame * Tree.exp list -> Tree.exp list
+    *)
+    val findEscArgs : frame -> unit
     val procEntryExit1 : frame * Tree.exp -> Tree.stm
     (*
     val procEntryExit2 : frame * Assem.instr list -> Assem.instr list

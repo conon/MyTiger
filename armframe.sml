@@ -94,6 +94,58 @@ struct
         exp
       | makeseq (exp::exps) = Tree.SEQ(exp,(makeseq exps))
 
+    (*
+    fun passingArguments (frame,args) = 
+        let val fls = formals frame
+            fun iter (fs,args,i) =
+                case (fs,args) of
+                    (f::fs,arg::args) => 
+                        (case f of 
+                            InReg r => iter(fs,args,i)
+                          | InFrame m => i::iter(fs,args,i+1))
+                  | (nil,nil) => nil
+                  | (nil,args) => (print "Error: ARGS more than FS\n";nil)
+                  | (fs,nil) => (print "Error: FS more than ARGS\n";nil)
+        in iter(fls,args,0) end
+    *)
+
+    val esc = ref nil
+    fun getEsc () = rev(!esc)
+    fun removeEsc () = esc := tl(rev(!esc))
+
+    (*
+    fun passingArguments (frame,args) =
+        let val fls = formals frame
+            fun iter (fs,args,i) =
+                    case (fs,args) of
+                        (f::fs,a::args) => (case f of
+                                             InReg r => T.ESEQ(T.MOVE(T.TEMP r, a),T.CONST 0)::iter(fs,args,i+1)
+                                           | InFrame m => let val r = Temp.newtemp()
+                                                          in (esc := r::(!esc);
+                                                              T.ESEQ(T.MOVE(T.TEMP r, a),T.CONST 0))::iter(fs,args,i+1)
+                                                          end)
+                      | (nil,nil) => nil
+           val moves = iter(fls,args,0)
+        in
+            moves
+        end
+    *)
+
+    fun findEscArgs frame =
+        let val fls = formals frame
+            fun iter (fs,i) =
+               case fs of
+                   f::fs => (case f of
+                                 InReg r => iter(fs,i+1)
+                               | InFrame m => if i = 0
+                                              then iter(fs,i+1) (* ignore static link *)
+                                              else (print("find: "^Int.toString(i)^"\n");
+                                                    (i-1)::iter(fs,i+1)))
+                 | nil => nil
+        in esc := iter(fls,0)::(!esc) end
+                        
+        
+
     fun procEntryExit1(frame,body) =
         T.SEQ(T.MOVE(T.TEMP 4, T.TEMP 0),
         T.SEQ(T.MOVE(T.TEMP 5, T.TEMP 1),
