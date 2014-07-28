@@ -29,6 +29,12 @@ struct
           | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.CONST i)), e)) =
             emit(A.OPER{assem="str `s0, [`d0, #"^Int.toString(i)^"]"^"\n", 
                         src=[munchExp e], dst=[t], jump=NONE})
+          | munchStm(T.MOVE(T.TEMP rv, T.CALL(name,args))) =
+            let val a = munchArgs(0,args)
+                val n = munchExp name
+            in
+                emit(A.MOVE{assem="mov `d0, `s0\n", src=Frame.RV, dst=rv})
+            end
           | munchStm(T.MOVE(T.TEMP t1, T.TEMP t2)) =
             emit(A.MOVE{assem="mov `d0, `s0\n",src=t2, dst=t1})
           | munchStm(T.MOVE(T.TEMP t, e)) =
@@ -92,27 +98,6 @@ struct
 
 	      | munchExp _ = raise TestExp "Out os expressions\n"
 
-       and munchArgs2(i,args) =
-           let val fs = Frame.formals frame
-               val _ = print("HERE"^Int.toString(length(fs))^"\n")
-               fun iter(i,args) =
-               let val exp = Frame.exp (List.nth(fs,i)) (T.TEMP Frame.FP)
-               in
-                   case args of
-                   arg::nil => (emit(A.MOVE{assem="mov `d0, `s0"^"\n", 
-                                               src=munchExp arg, dst=munchExp exp});
-                                nil)
-                 | arg::args => (emit(A.MOVE{assem="mov `d0, `s0"^"\n", 
-                                               src=munchExp arg, dst=munchExp exp});
-                                 i::iter(i+1,args))
-                 | nil => nil
-             end
-           in
-               if length(fs) = 1
-               then nil
-               else iter(1,args)
-           end
-           
        and munchArgs (i,args) =
            let fun iter (i,args) =
                let val r = List.nth(Frame.registers,i)
@@ -137,30 +122,6 @@ struct
                        then () 
                        else emit(A.OPER{assem="stmia sp, {"^regstr^"}\n", src=[], dst=[], jump=NONE})
            in nl end
-
-
-       and munchArgs3(i,args) =
-           let fun iter(i,args)  =
-                  case args of
-                      arg::args => if i >= Frame.K (* number of arguments *)
-                                   then (esc := i::(!esc);
-                                         emit(A.MOVE{assem="mov r"^Int.toString(i)^", `s0\n", 
-                                                     src=munchExp arg, dst=i});
-                                         i::iter(i+1,args))
-                                   else (esc := i::(!esc);
-                                         emit(A.MOVE{assem="mov r"^Int.toString(i)^", `s0\n", 
-                                                src=munchExp arg, dst=i});
-                                         i::iter(i+1,args))
-                   | nil => nil
-              fun regs esclst =
-                  case esclst of
-                      e::nil => "r"^Int.toString(e)
-                    | e::es => "r"^Int.toString(e)^","^regs(es)
-                    | nil => ""
-              val nl = iter(i,args)
-              val regstr = regs(!esc)
-              val _ = if List.null(!esc) then () else emit(A.OPER{assem="stmia sp, {"^regstr^"}\n", src=[], dst=[], jump=NONE})
-          in nl end
 	in
 	    munchStm stm;
 	    rev(!ilist)

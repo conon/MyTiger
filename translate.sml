@@ -239,14 +239,13 @@ fun callFunction (s,curlev,calledlev,args) =
                            | StartLevel => raise StartLevelExc
     val facc = getStaticLink(calledfunlev)
     val sl = Frame.exp facc (T.TEMP Frame.FP)
-    (* TODO: 1. do(or not) something with sl 
-             2. Try to pass the arguments here rather than in armgen.sml *)
+    (* TODO: 1. do(or not) something with sl *)
 	fun uex arg =
 	    unEx arg
 	val args' = map uex args
     val _ = Frame.findEscArgs calledfunframe
     val _ = print("Call length: "^Int.toString(length(Frame.getEsc ()))^"\n")
-    in Ex(T.CALL(T.NAME (Temp.namedlabel(s)), args')) end
+    in Ex (T.CALL(T.NAME (Temp.namedlabel(s)), args')) end
 
 fun assign (lvalue,rvalue) =
     Nx (T.MOVE(unEx lvalue,unEx rvalue))
@@ -295,8 +294,8 @@ fun forExp (var, lo, hi, body, ldone) =
 
 fun procEntryExit {level=lev, body=exp} =
     case lev of
-        Level (fr,_,_) => let (* val body' = Frame.procEntryExit1(fr,unEx(exp))*)
-                          in (frags := Frame.PROC{body=unNx(exp), frame=fr} :: (!frags);
+        Level (fr,_,_) => let val body' = Frame.procEntryExit1(fr,unEx(exp))
+                          in (frags := Frame.PROC{body=body', frame=fr} :: (!frags);
                               print("FRAGS length: "^Int.toString(length (!frags))^"\n"); 
                               print("Formals length: "^Int.toString(length(Frame.formals fr))^"\n"))
                           end

@@ -94,42 +94,11 @@ struct
         exp
       | makeseq (exp::exps) = Tree.SEQ(exp,(makeseq exps))
 
-    (*
-    fun passingArguments (frame,args) = 
-        let val fls = formals frame
-            fun iter (fs,args,i) =
-                case (fs,args) of
-                    (f::fs,arg::args) => 
-                        (case f of 
-                            InReg r => iter(fs,args,i)
-                          | InFrame m => i::iter(fs,args,i+1))
-                  | (nil,nil) => nil
-                  | (nil,args) => (print "Error: ARGS more than FS\n";nil)
-                  | (fs,nil) => (print "Error: FS more than ARGS\n";nil)
-        in iter(fls,args,0) end
-    *)
 
     val esc = ref nil
     fun getEsc () = rev(!esc)
     fun removeEsc () = esc := tl(rev(!esc))
 
-    (*
-    fun passingArguments (frame,args) =
-        let val fls = formals frame
-            fun iter (fs,args,i) =
-                    case (fs,args) of
-                        (f::fs,a::args) => (case f of
-                                             InReg r => T.ESEQ(T.MOVE(T.TEMP r, a),T.CONST 0)::iter(fs,args,i+1)
-                                           | InFrame m => let val r = Temp.newtemp()
-                                                          in (esc := r::(!esc);
-                                                              T.ESEQ(T.MOVE(T.TEMP r, a),T.CONST 0))::iter(fs,args,i+1)
-                                                          end)
-                      | (nil,nil) => nil
-           val moves = iter(fls,args,0)
-        in
-            moves
-        end
-    *)
 
     fun findEscArgs frame =
         let val fls = formals frame
@@ -147,24 +116,38 @@ struct
         
 
     fun procEntryExit1(frame,body) =
-        T.SEQ(T.MOVE(T.TEMP 4, T.TEMP 0),
-        T.SEQ(T.MOVE(T.TEMP 5, T.TEMP 1),
-        T.SEQ(T.MOVE(T.TEMP 6, T.TEMP 2),
-        T.SEQ(T.MOVE(T.TEMP 7, T.TEMP 3),
-              T.MOVE(T.TEMP 0, body)))))   (* Evaluate body and store the result to the Return Value register *)
+        T.MOVE(T.TEMP RV, body)   (* Evaluate body and store the result to the Return Value register *)
 
 (*
     fun procEntryExit2(frame,body) =
         body @ [A.OPER{assem="", src=specialregs@callesaves, dst=[], jump=SOME []}]
-        *)
-        
-        (*
-    fun procEntryExit3(frame,instrs) =
-        let val p = "push {fp, lr}
-                     add fp, sp, #4
-                     sub sp, sp, #16"
-            val e = 
-            *)
+*)
+    fun procEntryExit3(fr as {name=n,formals=f,locals=l},instrs) =
+        let val numlocals = (!l)
+            val startProlog = Symbol.name(n)^"\n"^
+                              "mov fp, sp\n"^
+                              "sub sp, sp, #58\n"^ (* TODO: sub size, dummy *)
+                              "str fp, [sp]\n"
+            val startEpilog = "mov sp, fp\n"^
+                              "finish:\n"^
+                              "mov r7, #1\n"^
+                              "swi 0x00\n"
+            val funProlog = Symbol.name(n)^":\n"^
+                            "sub fp, fp, #"^Int.toString(numlocals)^"\n"^
+                            "stmdb fp, {r4-r10,r12,lr}\n"^
+                            "mov fp, sp\n"^
+                            "sub sp, sp, #58\n"^
+                            "str fp, [sp]\n"
+           val funEpilog = "mov sp, fp\n"^
+                           "ldr fp, [sp]\n"^
+                           "sub fp, fp, #"^Int.toString(numlocals)^"\n"^
+                           "ldmdb fp, {r4-r10,r12,pc}\n"
+           val sn = Symbol.symbol "_start:"
+        in
+            if n = sn
+            then {prolog=startProlog, body=instrs, epilog=startEpilog}
+            else {prolog=funProlog, body=instrs, epilog=funEpilog}
+        end
         
 
 

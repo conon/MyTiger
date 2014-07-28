@@ -227,7 +227,7 @@ fun transProg ast =
           then venv
           else let val formals = map #escape p
                    val formals' = formalstobool formals
-                   val label' = Temp.newlabel()
+                   val label' = Temp.namedlabel(Symbol.name(n))
                    val lev' = Tr.newLevel {parent=lev, name=label',
                                            formals = formals'} 
                val _ = levs := lev'::(!levs)
@@ -512,7 +512,7 @@ fun transProg ast =
 		trexp(init)
             end
     in
-        let val startLevel = Tr.newLevel {parent=Tr.outermost, name=Temp.newlabel(), formals=nil}
+        let val startLevel = Tr.newLevel {parent=Tr.outermost, name=Temp.namedlabel "_start:", formals=nil}
 	    val breaklabel = Tr.initLoop
 	    val {exp=e,ty=_} = transExp(Env.base_venv, Env.base_tenv, ast, startLevel, breaklabel, nil)
         val _ = Tr.procEntryExit {level=startLevel, body=e}
