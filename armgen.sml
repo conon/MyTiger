@@ -18,10 +18,14 @@ struct
 
 	    fun munchStm (T.SEQ(a,b)) =
 	        (munchStm a; munchStm b)
+          | munchStm (T.EXP exp) =
+            (munchExp exp; ())
 	      | munchStm (T.LABEL lab) =
 	        emit(A.LABEL{assem=Symbol.name(lab) ^ ":\n", lab=lab})
           | munchStm (T.JUMP(exp,labelList)) =
             emit(A.OPER{assem="b `j0\n",src=[],dst=[],jump=SOME labelList})
+
+            
           | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.BINOP(T.MUL,T.CONST i1,
                      T.CONST i2))), e)) =
             emit(A.OPER{assem="str `s0, [`d0, #"^Int.toString(i1*i2)^"]"^"\n",
@@ -29,6 +33,8 @@ struct
           | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.CONST i)), e)) =
             emit(A.OPER{assem="str `s0, [`d0, #"^Int.toString(i)^"]"^"\n", 
                         src=[munchExp e], dst=[t], jump=NONE})
+          | munchStm(T.MOVE(T.TEMP t, T.NAME n)) =
+            emit(A.OPER{assem="adr `d0, "^Symbol.name(n)^"\n", src=[], dst=[t], jump=NONE})
           | munchStm(T.MOVE(T.TEMP rv, T.CALL(name,args))) =
             let val a = munchArgs(0,args)
                 val n = munchExp name
@@ -43,8 +49,8 @@ struct
             emit(A.MOVE{assem="str `s0, `d0, #4\n", src=munchExp e2, dst=munchExp e1})
           | munchStm (T.MOVE(e1,e2)) =
             emit(A.MOVE{assem="ldr `d0, `s0\n", dst=munchExp e1, src=munchExp e2}) 
-          | munchStm (T.EXP exp) =
-            (munchExp exp; ())
+
+
           | munchStm(T.CJUMP(T.EQ,e1,e2,lt,lf)) =
             emit(A.OPER{assem="cmp `s0, `s1" ^ "\n" ^ "beq `j0\n",
             src=[munchExp e1,munchExp e2], dst=[], jump=SOME [lt,lf]})
@@ -64,6 +70,7 @@ struct
             emit(A.OPER{assem="cmp `s0, `s1" ^ "\n" ^ "bge `j0\n",
             src=[munchExp e1,munchExp e2], dst=[], jump=SOME [lt,lf]})
 	      | munchStm _ = raise TestStm "Out of statements\n"
+
 
 	    and munchExp (T.BINOP(T.PLUS,e1,e2)) =
             result (fn r => emit(A.OPER{assem="add `d0, `s0, `s1\n",
@@ -100,10 +107,11 @@ struct
 
        and munchArgs (i,args) =
            let fun iter (i,args) =
-               let val r = List.nth(Frame.registers,i)
+               let val r = List.nth(Frame.registerTemps,i-1)
+                   (*val _ = print("TEST register: "^Temp.makestring(r)^"\n")*)
                in
                   case args of
-                      arg::args => (emit(A.MOVE{assem="mov r"^Int.toString(i-1)^", `s0"^"\n", 
+                      arg::args => (emit(A.MOVE{assem="mov `d0, `s0"^"\n", 
                                                src=munchExp arg, dst=r});
                                     r::iter(i+1,args))
                     | nil => nil
