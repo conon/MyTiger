@@ -8,7 +8,8 @@ exception CxToNx
 exception StartLevelExc
 exception LabelCaseExc
 
-datatype level = Level of Frame.frame * level * unit ref (* Actual frame, the parent frame, every new level is unique *)
+(* Actual frame, the parent frame, every new level is unique *)
+datatype level = Level of Frame.frame * level * unit ref 
        | StartLevel
 type access = level * Frame.access
 datatype exp = Ex of Tree.exp
@@ -108,24 +109,6 @@ fun concatExps (s,e) =
          
 fun constIntVar i =
     Ex (T.CONST i)
-
-(*
-fun simpleVar (access, currentlevel) =
-    let val (varlevel,varframeaccess) = access
-        val fp = Tree.TEMP(Frame.FP)
-        fun calcaddr curlev =
-            let val (varframe,varparentlevel,varframeid) = case curlev of 
-                                                       Level l => l
-                                                     | StartLevel => raise StartLevelExc
-            in if varparentlevel = curlev
-               then fp
-               else T.MEM(calcaddr varparentlevel)
-            end
-       val path = calcaddr currentlevel
-    in
-        Ex (Frame.exp varframeaccess fp)
-    end
-*)
 
 fun simpleVar (access, currentlevel) =
     let val (varlevel,varframeaccess) = access

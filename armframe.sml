@@ -124,7 +124,9 @@ struct
 *)
     fun procEntryExit3(fr as {name=n,formals=f,locals=l},instrs) =
         let val numlocals = (!l)
-            val startProlog = Symbol.name(n)^"\n"^
+            val startProlog = ".global _start\n\n"^
+                              ".text\n\n"^
+                              Symbol.name(n)^"\n"^
                               "mov fp, sp\n"^
                               "sub sp, sp, #58\n"^ (* TODO: sub size, dummy *)
                               "str fp, [sp]\n"
@@ -151,7 +153,14 @@ struct
         
 
 
-    fun string (lab,s) = "" (* TODO: dummy *)
+    fun string (lab,s) = 
+        let val len = Int.toString(String.size s)
+        in
+            Symbol.name(lab)^":"^"\n"^
+            ".word "^len^"\n"^
+            ".ascii "^"\""^s^"\""^"\n"^
+            ".align 4"^"\n"
+        end
 
 end
 

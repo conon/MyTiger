@@ -115,7 +115,6 @@ val commentsClosed = ref true
 val stringClosed = ref 0
 val str = ref ""
 
-
 fun eof() =
     if not (!commentsClosed)
     then (ErrorMsg.error (!lineNum) ("unmatch comment"); Tokens.EOF(!lineNum,!lineNum))
@@ -225,8 +224,13 @@ fun yyAction20 (strm, lastMatch : yymatch) = (yystrm := strm;
       (YYBEGIN INITIAL; commentsClosed := true; continue()))
 fun yyAction21 (strm, lastMatch : yymatch) = (yystrm := strm; (continue()))
 fun yyAction22 (strm, lastMatch : yymatch) = (yystrm := strm;
-      (YYBEGIN INITIAL; stringClosed := !stringClosed - 1; 
-		         Tokens.STRING(!str,yypos,yypos)))
+      (YYBEGIN INITIAL; 
+                         stringClosed := !stringClosed - 1; 
+                         let val temp = !str
+                             val _ = str := ""
+                         in
+                             Tokens.STRING(temp,yypos,yypos)
+                         end))
 fun yyAction23 (strm, lastMatch : yymatch) = (yystrm := strm;
       (YYBEGIN ESC; continue()))
 fun yyAction24 (strm, lastMatch : yymatch) = let
@@ -272,7 +276,9 @@ fun yyAction32 (strm, lastMatch : yymatch) = let
 		         " [use backslash for splitting string]"); continue())
       end
 fun yyAction33 (strm, lastMatch : yymatch) = (yystrm := strm;
-      (YYBEGIN STRING; stringClosed := !stringClosed + 1; continue()))
+      (YYBEGIN STRING; 
+                         stringClosed := !stringClosed + 1; 
+                         continue()))
 fun yyAction34 (strm, lastMatch : yymatch) = (yystrm := strm;
       (Tokens.ASSIGN(yypos,yypos+2)))
 fun yyAction35 (strm, lastMatch : yymatch) = (yystrm := strm;

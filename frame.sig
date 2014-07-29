@@ -22,10 +22,11 @@ sig
     val string : Temp.label * string -> string 
 
     (* 
-       The current organization of the frame makes it hard to evaluate
-       escaping arguments, this function makes all the moves to "first K"
-       or moves escaping and "more than K" values to outgoing
-       registers in stack 
+       The current organization of the frame makes it hard to find
+       escaping function arguments. getEsc() function returns a list of 
+       lists of calls  that contains all the escaping function argumnts 
+       that will go to outgoing-registers in frame. removeEsc() function
+       removes the first call list.
     *)
     val getEsc : unit -> int list list (* list of escaping arguments *)
     val removeEsc : unit -> unit (* removes evaluated list of escaping arguments *)
