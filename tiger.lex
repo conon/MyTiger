@@ -11,7 +11,6 @@ val commentsClosed = ref true
 val stringClosed = ref 0
 val str = ref ""
 
-
 fun eof() =
     if not (!commentsClosed)
     then (ErrorMsg.error (!lineNum) ("unmatch comment"); Tokens.EOF(!lineNum,!lineNum))
@@ -58,8 +57,14 @@ formatchar = ({newline} | {ws});
 <COMMENT>.           => (continue());
                       
                       
-<STRING>"\""         => (YYBEGIN INITIAL; stringClosed := !stringClosed - 1; 
-		         Tokens.STRING(!str,yypos,yypos));
+<STRING>"\""         => (YYBEGIN INITIAL; 
+                         stringClosed := !stringClosed - 1; 
+                         let val temp = !str
+                             val _ = str := ""
+                         in
+                             Tokens.STRING(temp,yypos,yypos)
+                         end);
+                         
 <STRING>"\\"         => (YYBEGIN ESC; continue());
 <STRING>{newline}    => (ErrorMsg.error yypos ("strings can not be splited to separate lines " ^ 
 		         yytext ^ " [use backslash for splitting string]"); continue());
@@ -75,7 +80,9 @@ formatchar = ({newline} | {ws});
 <FORMAT>.            => (ErrorMsg.error yypos ("illegal character " ^ yytext ^ 
 		         " [use backslash for splitting string]"); continue());
                       
-<INITIAL>"\""        => (YYBEGIN STRING; stringClosed := !stringClosed + 1; continue());
+<INITIAL>"\""        => (YYBEGIN STRING; 
+                         stringClosed := !stringClosed + 1; 
+                         continue());
 <INITIAL>":="        => (Tokens.ASSIGN(yypos,yypos+2));
 <INITIAL>"|"         => (Tokens.OR(yypos,yypos+1));
 <INITIAL>"&"         => (Tokens.AND(yypos,yypos+1));

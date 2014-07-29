@@ -88,14 +88,7 @@ fun getStaticLink lev =
 	                  in fracc end
       | StartLevel => raise ErrorAlloc
 
-fun makeExps (explst,exp) =
-    let fun iter (exp'::exps') =
-            T.SEQ(unNx exp', iter(exps'))
-          | iter nil =
-            unNx exp
-    in Nx (iter(explst)) end
-
-fun makeExp explst =
+fun makeSeq explst =
     let fun iter (exp::nil) =
             unNx exp
           | iter (exp::exps) =
@@ -104,8 +97,21 @@ fun makeExp explst =
             T.EXP(T.CONST 0)
     in Nx (iter(explst)) end
 
-fun concatExps (s,e) =
-    Ex (T.ESEQ(unNx s,unEx e))
+fun makeExp explst =
+    let fun iter (exp::nil) =
+            unEx exp
+          | iter (exp::exps) = 
+            T.ESEQ(unNx exp, iter(exps))
+          | iter nil =
+            T.CONST 0
+    in Ex (iter(explst)) end
+
+fun concatLet (s,e,l) =
+    let val fr = case l of
+                     Level(fr,_,_) => fr
+                   | StartLevel => raise StartLevelExc
+        val ret = Frame.procEntryExit1(fr,unEx e)
+    in Nx (T.SEQ(unNx s,ret)) end
          
 fun constIntVar i =
     Ex (T.CONST i)
@@ -277,10 +283,8 @@ fun forExp (var, lo, hi, body, ldone) =
 
 fun procEntryExit {level=lev, body=exp} =
     case lev of
-        Level (fr,_,_) => let val body' = Frame.procEntryExit1(fr,unEx(exp))
-                          in (frags := Frame.PROC{body=body', frame=fr} :: (!frags);
-                              print("FRAGS length: "^Int.toString(length (!frags))^"\n"); 
-                              print("Formals length: "^Int.toString(length(Frame.formals fr))^"\n"))
-                          end
+        Level (fr,_,_) => frags := Frame.PROC{body=unNx(exp), frame=fr} :: (!frags)
+                         (*print("FRAGS length: "^Int.toString(length (!frags))^"\n"); 
+                         print("Formals length: "^Int.toString(length(Frame.formals fr))^"\n")*)
       | _ => raise StartLevelExc
 end

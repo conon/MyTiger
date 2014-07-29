@@ -447,8 +447,8 @@ fun transProg ast =
 	          | trexp (A.LetExp{decs, body, pos}) =
                     let val ({venv=venv', tenv=tenv'},lev',expslist) = transDecs(venv, tenv, decs, lev, nil, breaklabel)
                         val {exp=e,ty=ty} = transExp(venv', tenv', body, lev', breaklabel,expslist)
-                        val exps = Tr.makeExp(expslist)
-                        val e' = Tr.concatExps(exps,e)
+                        val exps = Tr.makeSeq(expslist)
+                        val e' = Tr.concatLet(exps,e,lev')
                     in
                         {exp=e',ty=ty}
                     end

@@ -15,9 +15,9 @@ sig
     val dummy : exp (* a dummy val to make compilation work *)
     val getResult : unit -> Frame.frag list
 
-    val makeExps : exp list * exp -> exp
+    val makeSeq : exp list -> exp
     val makeExp : exp list -> exp
-    val concatExps : exp * exp -> exp
+    val concatLet : exp * exp * level -> exp
 
     val constIntVar : int -> exp
     val nilVar : unit -> exp
