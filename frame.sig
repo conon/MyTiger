@@ -23,15 +23,22 @@ sig
 
     (* 
        The current organization of the frame makes it hard to find
-       escaping function arguments. getEsc() function returns a list of 
+       escaping function arguments.findEscArgs finds all 
+       escaping argumetns in called function frame.
+       Any escaping variable can be get with getEsc 
+       getEsc() function returns a list of 
        lists of calls  that contains all the escaping function argumnts 
        that will go to outgoing-registers in frame. removeEsc() function
        removes the first call list.
+       A typical usage of the following functions is:
+       1) findEscArgs
+       2) getEsc
+       3) removeEsc
     *)
+    val findEscArgs : frame -> unit
     val getEsc : unit -> int list list (* list of escaping arguments *)
     val removeEsc : unit -> unit (* removes evaluated list of escaping arguments *)
 
-    val findEscArgs : frame -> unit
     val procEntryExit1 : frame * Tree.exp -> Tree.stm
     (*
     val procEntryExit2 : frame * Assem.instr list -> Assem.instr list

@@ -132,7 +132,7 @@ fun simpleVar (access, currentlevel) =
         in Ex (Frame.exp varframeaccess afp) end
 
 fun nilVar () =
-    Ex (T.MEM (T.CONST 0))
+    Ex (T.CONST 0)
 
 fun strVar str =
     let val lab = Temp.newlabel()

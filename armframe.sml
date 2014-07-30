@@ -80,25 +80,26 @@ struct
                 false => (print "INREG_ALLOC\n";InReg (Temp.newtemp()))
               | true => (print "INFRAME_ALLOC\n";l := !l+1; InFrame (~(!l) * wordSize))
 
+    val esc = ref nil
+    fun getEsc () = rev(!esc)
+    fun removeEsc () = esc := tl(rev(!esc))
+
     fun exp facc fp =
         case facc of
             InFrame k => (print "INFRAME_EXP\n";Tree.MEM(Tree.BINOP(Tree.PLUS, fp, Tree.CONST k)))
           | InReg t => (print "INREG_EXP\n";Tree.TEMP t)
 
     fun externalCall (s,args) =
-        Tree.CALL(Tree.NAME(Temp.namedlabel s), args)
+        let val _ = if K > List.length(args) 
+                    then esc := nil::(!esc) 
+                    else print "Error: externalCall in armframe.sml"
+        in Tree.CALL(Tree.NAME(Temp.namedlabel s), args) end
 
     fun makeseq nil =
         Tree.EXP(Tree.CONST 0)
       | makeseq [exp] =
         exp
       | makeseq (exp::exps) = Tree.SEQ(exp,(makeseq exps))
-
-
-    val esc = ref nil
-    fun getEsc () = rev(!esc)
-    fun removeEsc () = esc := tl(rev(!esc))
-
 
     fun findEscArgs frame =
         let val fls = formals frame
