@@ -23,13 +23,13 @@ sig
     val nilVar : unit -> exp
     val strVar : string -> exp 
     val simpleVar : access * level -> exp
-    val subScriptVar : exp * exp -> exp (*exp1->address of value, exp2->element's position*)
+    val subScriptVar : exp * exp * unit ref -> exp (*exp1->address of value, exp2->element's position*)
     val fieldVar : exp * int -> exp (* exp1 -> address of value, int -> element's position *)
     val opExp : Absyn.oper * exp * exp -> exp
     val cond1Exp : exp * exp -> exp (*exp1:the condition,exp2:then expression*)
     val cond2Exp : exp * exp * exp -> exp (*exp1:the condition,exp2:then expression,exp3:else expression*)
     val createRecord : exp list * int -> exp 
-    val createArray : exp * exp -> exp
+    val createArray : exp * exp * unit ref -> exp
     val callFunction : string * level * level * exp list -> exp
     val assign : exp * exp -> exp (*exp1:lvalue,exp2:rvalue*)
     val breakLoop : exp -> exp (* returns the done label exp *)

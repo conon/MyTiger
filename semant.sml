@@ -1,5 +1,5 @@
 structure Semant : sig 
-    val transProg : Absyn.exp -> Frame.frag list end =
+	      val transProg : Absyn.exp -> Frame.frag list end =
 struct
 
 structure A = Absyn
@@ -116,7 +116,7 @@ fun transProg ast =
 		      ({tenv=tenv, venv=venv},lev,expslist) )
 	        else let val acc = Tr.allocLocal lev (!escape)
 		         val venv' = Symbol.enter(venv, name, Env.VarEntry{access = acc, ty = expty})
-                 val var = Tr.assign(Tr.simpleVar(acc,lev),e)
+			 val var = Tr.assign(Tr.simpleVar(acc,lev),e)
 	             in ({tenv = tenv, venv = venv'}, lev, expslist@[var]) end
             end
           (* Declares a variable with long form, the type given should match the type of the expression,
@@ -132,7 +132,7 @@ fun transProg ast =
 			 if checkEqual(aty, ty_exp)
 			 then let val acc = Tr.allocLocal lev (!escape)
 			          val venv' = Symbol.enter(venv, name, Env.VarEntry{access = acc, ty = aty})
-                      val var = Tr.assign(Tr.simpleVar(acc,lev),e)
+				  val var = Tr.assign(Tr.simpleVar(acc,lev),e)
 			      in ({tenv = tenv, venv = venv'},lev,expslist@[var]) end
 			 else (error posId "type specifier does not much expression type";
 			       ({tenv = tenv, venv = venv},lev,expslist))
@@ -191,17 +191,17 @@ fun transProg ast =
 		fun transparam(fields : A.field list) = (* expects a field list *)
 		    let fun nametype ((typ,name),(pos,escape)) =
                             (case Symbol.look(tenv, typ) of
-			                     SOME t => {name = name, ty = t, escape = escape}
+			         SOME t => {name = name, ty = t, escape = escape}
                                | NONE => (error pos ("unbound type " ^ Symbol.name typ);
                                           {name=Symbol.symbol "", ty = Types.NIL, escape = ref false}))
-		    val typs = map #typ fields (* typs holds a list of types *)
+			val typs = map #typ fields (* typs holds a list of types *)
 			val names = map #name fields (* names holds a list of names *)
 			val poses = map #pos fields
-            val escapes = map #escape fields
+			val escapes = map #escape fields
 			val tn = ListPair.zip(typs,names)
-            val pe = ListPair.zip(poses,escapes)
+			val pe = ListPair.zip(poses,escapes)
 			val tnp = ListPair.zip(tn,pe)
-		    val typlist = map nametype tnp (* typlist hold a list of name,type pair,escape *)
+			val typlist = map nametype tnp (* typlist hold a list of name,type pair,escape *)
 		    in
 		        typlist
 		    end
@@ -218,22 +218,22 @@ fun transProg ast =
 		val resultsty' = map resty resultsty (* a list of results type *)
 		val rp = ListPair.zip(resultsty',params')
 		val nrp = ListPair.zip(names,rp)
-        fun addf((n ,(r , p : {name : Symbol.symbol, ty : Types.ty, escape : bool ref} list)), venv) = 
-        let fun formalstobool f =
-                case f of
-                f::fs => (!f) :: formalstobool(fs)
-              | nil => nil
-        in    if !anyErrors
-          then venv
-          else let val formals = map #escape p
-                   val formals' = formalstobool formals
-                   val label' = Temp.namedlabel(Symbol.name(n))
-                   val lev' = Tr.newLevel {parent=lev, name=label',
-                                           formals = formals'} 
-               val _ = levs := lev'::(!levs)
-               in Symbol.enter(venv, n, Env.FunEntry{level=lev', label=label',
-                                                 formals = map #ty p, result = r}) end
-        end
+		fun addf((n ,(r , p : {name : Symbol.symbol, ty : Types.ty, escape : bool ref} list)), venv) = 
+		    let fun formalstobool f =
+			    case f of
+				f::fs => (!f) :: formalstobool(fs)
+			      | nil => nil
+		    in    if !anyErrors
+			  then venv
+			  else let val formals = map #escape p
+				   val formals' = formalstobool formals
+				   val label' = Temp.namedlabel(Symbol.name(n))
+				   val lev' = Tr.newLevel {parent=lev, name=label',
+							   formals = formals'} 
+				   val _ = levs := lev'::(!levs)
+			       in Symbol.enter(venv, n, Env.FunEntry{level=lev', label=label',
+								     formals = map #ty p, result = r}) end
+		    end
 	        (* 3. update the current enviroment with the function name which contains: the result type
 				and all the pairs(name,type) of the parameters as funentry *)
 		val venv' = foldl addf venv nrp
@@ -280,7 +280,7 @@ fun transProg ast =
                           {exp=Tr.dummy, ty = Types.UNIT})
                   | trexp (A.SeqExp seqs) =
                     let fun makeTree ((exp,_),lst) =
-                        trexp(exp)::lst
+                            trexp(exp)::lst
                         val tr = foldr makeTree nil seqs
                         fun canonicalize ({exp=e,ty=t},lst) =
                             e::lst
@@ -296,7 +296,7 @@ fun transProg ast =
                         if checkEqual(trty,expty)
                         then {exp = Tr.assign(lval,rval), ty = Types.UNIT}
                         else (error pos "wrong type value assiged to variable";
-                                      {exp=Tr.dummy, ty = Types.UNIT})
+                              {exp=Tr.dummy, ty = Types.UNIT})
                     end
                   | trexp (A.CallExp{func, args, pos}) =
                     let fun iter ((argtype,formaltype),exps) =
@@ -309,22 +309,22 @@ fun transProg ast =
                     in
                         (case Symbol.look(venv, func) of
                              SOME(Env.FunEntry{level, label, formals, result}) => 
-                                 let val res = if length(args) > length(formals)
-                                               then (error pos "number of arguments do not match those of declaration";nil)
-                                               else if length(args) < length(formals)
-                                               then (error pos "number of declared parameters do not match arguments";nil)
-                                               else let val pr = ListPair.zip(args,formals) in foldl iter nil pr end
-                                 in
-                                     if !anyErrors
-                                     then {exp=Tr.dummy, ty = Types.UNIT}
-                                     else if result = Types.UNIT
-                                          (* lev -> current level , level -> called function level *)
-                                     then {exp=Tr.callFunction(Symbol.name func,lev,level,res), ty = Types.UNIT}
-                                     else {exp=Tr.callFunction(Symbol.name func,lev,level,res), ty = result}
-                                 end
+                             let val res = if length(args) > length(formals)
+                                           then (error pos "number of arguments do not match those of declaration";nil)
+                                           else if length(args) < length(formals)
+                                           then (error pos "number of declared parameters do not match arguments";nil)
+                                           else let val pr = ListPair.zip(args,formals) in foldl iter nil pr end
+                             in
+                                 if !anyErrors
+                                 then {exp=Tr.dummy, ty = Types.UNIT}
+                                 else if result = Types.UNIT
+                                 (* lev -> current level , level -> called function level *)
+                                 then {exp=Tr.callFunction(Symbol.name func,lev,level,res), ty = Types.UNIT}
+                                 else {exp=Tr.callFunction(Symbol.name func,lev,level,res), ty = result}
+                             end
                            | SOME (Env.VarEntry{access=_, ty=ty}) => (error pos ("identifier " ^ Symbol.name func ^
-                                                     " is bound to a variable");
-                                                  {exp=Tr.dummy, ty = Types.UNIT})
+										 " is bound to a variable");
+								      {exp=Tr.dummy, ty = Types.UNIT})
                            | NONE => (error pos ("unbound identifier " ^ Symbol.name func);
                                       {exp=Tr.dummy, ty = Types.UNIT}))
                     end
@@ -341,9 +341,9 @@ fun transProg ast =
                             else (error pos ("field name " ^ "'" ^ Symbol.name s1 ^ "'"
 					     ^ "does not match the type given at declaration"); (false,count,exps))
 			  | iterFields((s1,e,p1)::xs,nil, count,exps) = (error pos ("field name " ^ "'" 
-			               ^  Symbol.name s1 ^ "'" ^ " was defined but not declared"); (false,count,exps))
+										    ^  Symbol.name s1 ^ "'" ^ " was defined but not declared"); (false,count,exps))
 			  | iterFields(nil,(s2,t)::ys, count,exps) = (error pos ("field name " ^ "'" ^ Symbol.name s2 
-			               ^ "'" ^ " was declared but not defined"); (false,count,exps))
+										 ^ "'" ^ " was declared but not defined"); (false,count,exps))
 			  | iterFields(nil,nil,count,exps) = (true,count,exps)
 			val restyp = (case Symbol.look(tenv, typ) of
 					  SOME ty => ty
@@ -362,27 +362,29 @@ fun transProg ast =
 			   | _ => (error pos ("variable " ^ Symbol.name typ ^ " is bound to not record type");
 				   {exp=Tr.dummy, ty = Types.INT}))
                     end
-                  | trexp (A.ArrayExp{typ, size, init, pos}) =
-                    let val typ' = (case Symbol.look(tenv, typ) of
+          | trexp (A.ArrayExp{typ, size, init, pos}) =
+            let val typ' = (case Symbol.look(tenv, typ) of
 					SOME ty => actual_ty ty
-                                      | NONE => (error pos ("unbound type: " ^ Symbol.name typ); Types.UNIT))
+                  | NONE => (error pos ("unbound type: " ^ Symbol.name typ); Types.UNIT))
 		    in
 		        (case typ' of
-                             Types.ARRAY(ty_arr,uniq) => 
-			     let val {exp=esize, ty = tysize} = trexp(size);
-				 val {exp=einit, ty = tyinit} = trexp(init)
-			     in
-				 if checkInt tysize
-				 then if ty_arr = tyinit
-                                      then {exp = Tr.createArray(esize,einit), ty = Types.ARRAY(tyinit, uniq)}
-      		              	      else (error pos "the initializing expression returns\
+                     Types.ARRAY (ty_arr,uniq) => 
+			                    let val {exp=esize, ty = tysize} = trexp(size);
+				                    val {exp=einit, ty = tyinit} = trexp(init)
+			                    in
+				                    if checkInt tysize
+				                    then 
+                                        if ty_arr = tyinit
+                                        then {exp = Tr.createArray(esize,einit,uniq), 
+                                              ty = Types.ARRAY(tyinit, uniq)}
+      		              	            else (error pos "the initializing expression returns\
                                           			       \ a type which does not match the array type";
- 					    {exp=Tr.dummy, ty = Types.INT})
-				 else (error pos "the subscript should evaluate integer";
-                                       {exp=Tr.dummy, ty = Types.INT})
-                             end
-			  |  _ => (error pos ("variable " ^ Symbol.name typ ^ " is bound to not array type");
-                                   {exp=Tr.dummy, ty = Types.UNIT}))
+ 					                          {exp=Tr.dummy, ty = Types.INT})
+				                    else (error pos "the subscript should evaluate integer";
+                                          {exp=Tr.dummy, ty = Types.INT})
+                                end
+			      |  _ => (error pos ("variable " ^ Symbol.name typ ^ " is bound to not array type");
+                           {exp=Tr.dummy, ty = Types.UNIT}))
 		    end
                   | trexp (A.IfExp{test, then',else' = SOME else', pos}) =
                     let val {exp=e1, ty = test'} = trexp(test)
@@ -410,7 +412,7 @@ fun transProg ast =
 		    let val {exp=et, ty = test'} = trexp(test)
 		        val breaklabel' = Tr.initLoop
 		        val {exp=eb, ty = body'} = (nested := !nested + 1; 
-			                           transExp(venv, tenv, body, lev, breaklabel',expslist))
+			                            transExp(venv, tenv, body, lev, breaklabel',expslist))
 	            in
 		        (nested := !nested - 1;
                          if checkInt(test')
@@ -422,20 +424,20 @@ fun transProg ast =
                   | trexp (A.ForExp{var, escape, lo, hi, body, pos}) =
 		    let val {exp=ehi, ty = hi'} = trexp(hi) 
 		        val ({venv = venv', tenv = tenv'},_,expslist) = transDec(venv, tenv,
-		                                                            A.VarDec{name = var, escape = ref false,
-                                                            typ = NONE, init = lo, pos = pos},lev,nil,breaklabel)
-                val (acc,lo') = case Symbol.look(venv', var) of
-                                    SOME (Env.VarEntry({access = acc, ty = lo'})) => (acc,lo')
-                                  | _ => raise ForUndefined
-                                                             
-                val var = Tr.simpleVar(acc, lev)
-                (* elo contains an assign tree due to evaluation in varDec *)
-                val elo = hd expslist
+										 A.VarDec{name = var, escape = ref false,
+											  typ = NONE, init = lo, pos = pos},lev,nil,breaklabel)
+			val (acc,lo') = case Symbol.look(venv', var) of
+					    SOME (Env.VarEntry({access = acc, ty = lo'})) => (acc,lo')
+					  | _ => raise ForUndefined
+                                                       
+			val var = Tr.simpleVar(acc, lev)
+			(* elo contains an assign tree due to evaluation in varDec *)
+			val elo = hd expslist
 		    in
 			if checkInts(lo',hi')
                         then let val breaklabel' = Tr.initLoop
 			         val {exp=ebody, ty = body'} = (nested := !nested + 1;
-				                            transExp(venv', tenv', body, lev, breaklabel',expslist))
+								transExp(venv', tenv', body, lev, breaklabel',expslist))
 			     in
 				 (nested := !nested - 1;
 				  if checkUnit body'
@@ -501,8 +503,8 @@ fun transProg ast =
 	                val {exp = exint, ty = expty} = trexp(ex)
                     in
                         if checkInt expty
-			then (case ty of
-                                  Types.ARRAY(ty, uniq) => {exp = Tr.subScriptVar(varaddress,exint), ty = ty}
+			            then (case ty of
+                                  Types.ARRAY(ty, uniq) => {exp = Tr.subScriptVar(varaddress,exint,uniq), ty = ty}
                                 | _ => (error pos "variable not defined as array";
 				        {exp=Tr.dummy, ty = Types.INT}))
 		        else (error pos "subscript expression should return an integer";
@@ -515,7 +517,7 @@ fun transProg ast =
         let val startLevel = Tr.newLevel {parent=Tr.outermost, name=Temp.namedlabel "_start:", formals=nil}
 	    val breaklabel = Tr.initLoop
 	    val {exp=e,ty=_} = transExp(Env.base_venv, Env.base_tenv, ast, startLevel, breaklabel, nil)
-        val _ = Tr.procEntryExit {level=startLevel, body=e}
+            val _ = Tr.procEntryExit {level=startLevel, body=e}
 	in 
 	    (*Tr.printTree e;*)Tr.getResult()
 	end

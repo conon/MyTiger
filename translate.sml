@@ -7,11 +7,14 @@ exception ErrorAlloc
 exception CxToNx 
 exception StartLevelExc
 exception LabelCaseExc
+exception ArraySizeExc
 
 (* Actual frame, the parent frame, every new level is unique *)
 datatype level = Level of Frame.frame * level * unit ref 
        | StartLevel
+
 type access = level * Frame.access
+
 datatype exp = Ex of Tree.exp
              | Nx of Tree.stm
 	     | Cx of Temp.label * Temp.label -> Tree.stm
@@ -19,6 +22,7 @@ datatype exp = Ex of Tree.exp
 val outermost = StartLevel
 
 val frags : Frame.frag list ref = ref nil
+val arraysize = ref nil (* stores a pair of array reference and size *)
 		    
 fun unEx (Ex e) = e
   | unEx (Cx genstm) =
@@ -50,6 +54,11 @@ fun unCx (Cx c) = c
   | unCx (Ex (T.CONST 1)) = (fn (t,f) => T.JUMP(T.NAME t, [t]))
   | unCx (Ex e) = (fn (t,f) => T.CJUMP(T.NE, e, T.CONST 0, t, f))
   | unCx (Nx _) = raise CxToNx
+
+fun findArraySize unique =
+    case (List.find(fn (u,_) => if u = unique then true else false) (!arraysize)) of
+        SOME n => n
+      | NONE => raise ArraySizeExc
 
 fun printTree exp =
     Printtree.printtree (TextIO.stdOut,unNx(exp))
@@ -139,8 +148,23 @@ fun strVar str =
         val _ = frags := Frame.STRING(lab,str)::(!frags)
     in Ex (T.NAME(lab)) end
 
-fun subScriptVar (a,i) =
-    Ex (T.MEM(T.BINOP(T.PLUS, unEx(a),T.BINOP(T.MUL, (unEx i), T.CONST Frame.wordSize))))
+fun subScriptVar (a,i,u) =
+    let val (_,size) = findArraySize(u)
+        val baseaddr = unEx a
+        val i' = unEx i
+        val offset = T.BINOP(T.MUL, i', T.CONST(Frame.wordSize))
+        val t = Temp.newlabel()
+        val f = Temp.newlabel()
+    in
+        Ex(T.ESEQ(
+           T.SEQ(T.CJUMP(T.GT, size, i', t, f),
+           T.SEQ(T.LABEL f,
+           T.SEQ(T.EXP(T.MEM(T.CONST 0)), (* raise segmentation fault to prevent values out of bound *)
+                 T.LABEL t))),
+           T.MEM(T.BINOP(T.PLUS, baseaddr, offset))))
+            
+    end
+
 (* mul by wordsize because all tiger values have the same size and minus 1 to get zero based offset *)
 
 fun fieldVar (a,i) =
@@ -207,8 +231,25 @@ fun createRecord (fexps,n) =
 	val cr = Frame.externalCall("initRecord",[T.CONST n])
     in Ex (T.ESEQ(T.SEQ(T.MOVE(T.TEMP r,cr), placeFields(fexps,T.TEMP r)),T.TEMP r)) end
 
-fun createArray (size,init) =
-    Ex (Frame.externalCall("initArray",[unEx size,unEx init]))
+fun findArraySize unique =
+    case (List.find(fn (u,_) => if u = unique then true else false) (!arraysize)) of
+        SOME n => n
+      | NONE => raise ArraySizeExc
+
+fun createArray (size,init,unique) =
+    let val size' = unEx size
+        val t = Temp.newlabel()
+        val f = Temp.newlabel()
+    in
+        (arraysize := (unique,size')::(!arraysize);
+        Ex (T.ESEQ(
+            T.SEQ(T.CJUMP(T.GT, size', T.CONST 0, t, f),
+            T.SEQ(T.LABEL f,
+            T.SEQ(T.EXP(T.MEM(T.CONST 0)), (* raise segmentation fault to prevent negative array size *)
+                  T.LABEL t))),
+            Frame.externalCall("initArray",[size',unEx init]))
+          ))
+    end
 
 fun callFunction (s,curlev,calledlev,args) =
     let 
