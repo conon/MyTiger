@@ -153,16 +153,30 @@ fun subScriptVar (a,i,u) =
         val baseaddr = unEx a
         val i' = unEx i
         val offset = T.BINOP(T.MUL, i', T.CONST(Frame.wordSize))
-        val t = Temp.newlabel()
         val f = Temp.newlabel()
+        val t1 = Temp.newlabel()
+        val t2 = Temp.newlabel()
     in
+    Ex(
+        T.ESEQ(T.SEQ(T.CJUMP(T.LT, size, i', f, t1),
+               T.SEQ(T.LABEL t1,
+               T.SEQ(T.CJUMP(T.LE, i', T.CONST 0, f, t2),
+               T.SEQ(T.LABEL t2,
+               T.SEQ(T.EXP(T.MEM(T.BINOP(T.PLUS, baseaddr, offset))),
+                     T.LABEL f))))),
+               T.MEM(T.CONST 0))
+        )
+    (*
         Ex(T.ESEQ(
-           T.SEQ(T.CJUMP(T.GT, size, i', t, f),
+           T.SEQ(T.CJUMP(T.GT, size, i', t1, f),
            T.SEQ(T.LABEL f,
            T.SEQ(T.EXP(T.MEM(T.CONST 0)), (* raise segmentation fault to prevent values out of bound *)
-                 T.LABEL t))),
-           T.MEM(T.BINOP(T.PLUS, baseaddr, offset))))
-            
+           T.SEQ(T.LABEL t1,
+           T.SEQ(T.CJUMP(T.GE, i', T.CONST 0, t2, f),
+                 T.LABEL t2))))),
+           T.MEM(T.BINOP(T.PLUS, baseaddr, offset)))
+        )
+        *)
     end
 
 (* mul by wordsize because all tiger values have the same size and minus 1 to get zero based offset *)
