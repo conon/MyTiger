@@ -33,13 +33,11 @@ struct
           | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.CONST i)), e)) =
             emit(A.OPER{assem="str `s0, [`d0, #"^Int.toString(i)^"]"^"\n", 
                         src=[munchExp e], dst=[t], jump=NONE})
-          | munchStm(T.MOVE(T.TEMP t, T.NAME n)) =
-            emit(A.OPER{assem="adr `d0, "^Symbol.name(n)^"\n", src=[], dst=[t], jump=NONE})
-          | munchStm(T.MOVE(T.TEMP rv, T.CALL(name,args))) =
+          | munchStm(T.MOVE(T.TEMP rv, T.CALL(T.NAME name,args))) =
+            (* NOTE rv is not used *)
             let val a = munchArgs(0,args)
-                val n = munchExp name
             in
-                emit(A.MOVE{assem="mov `d0, `s0\n", src=Frame.RV, dst=rv})
+                emit(A.OPER{assem="bl `j0\n", src=[], dst=[], jump=SOME [name]})
             end
           | munchStm(T.MOVE(T.TEMP t1, T.TEMP t2)) =
             emit(A.MOVE{assem="mov `d0, `s0\n",src=t2, dst=t1})
@@ -87,15 +85,14 @@ struct
           | munchExp (T.CONST i) =
             result (fn r => emit(A.OPER{assem="ldr `d0, =" ^ Int.toString i ^ "\n", 
                                 src=[], dst=[r], jump=NONE}))
-          | munchExp(T.CALL(name,args)) =
+          | munchExp(T.CALL(T.NAME name,args)) =
+             (* NOTE r is not used *)
             let val a = munchArgs(0,args)
-                val n = munchExp name
             in
-            result (fn r => emit(A.OPER{assem="",
-                  src=a,dst=[], jump=NONE}))
+                result (fn r => emit(A.OPER{assem="bl `j0\n", src=[], dst=[], jump=SOME [name]}))
             end
           | munchExp(T.NAME n) =
-            result (fn r => emit(A.LABEL{assem="bl " ^ Symbol.name(n)^"\n", lab=n}))
+            result (fn r => emit(A.OPER{assem="adr `d0, `j0"^"\n", src=[], dst=[r], jump=SOME [n]}))
           | munchExp(T.MEM(T.BINOP(T.PLUS,e,T.CONST i))) =
             result (fn r => emit(A.MOVE{assem="ldr `d0, [`s0, #"^Int.toString(i)^"]"^"\n", 
                                         src=munchExp e, dst=r}))

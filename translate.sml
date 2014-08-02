@@ -11,13 +11,13 @@ exception ArraySizeExc
 
 (* Actual frame, the parent frame, every new level is unique *)
 datatype level = Level of Frame.frame * level * unit ref 
-       | StartLevel
+               | StartLevel
 
 type access = level * Frame.access
 
 datatype exp = Ex of Tree.exp
              | Nx of Tree.stm
-	     | Cx of Temp.label * Temp.label -> Tree.stm
+	         | Cx of Temp.label * Temp.label -> Tree.stm
 
 val outermost = StartLevel
 
@@ -83,7 +83,7 @@ fun formals lev =
                                   | nil => nil
                              val acc = aux formals
                          in tl(acc) end (* drop the static link *)
-      | StartLevel => raise StartLevelExc
+      | StartLevel => (print "formals\n";raise StartLevelExc)
 
 fun allocLocal lev esc =
     let val fracc = case lev of
@@ -118,9 +118,9 @@ fun makeExp explst =
 fun concatLet (s,e,l) =
     let val fr = case l of
                      Level(fr,_,_) => fr
-                   | StartLevel => raise StartLevelExc
+                   | StartLevel => (print "concatLet\n";raise StartLevelExc)
         val ret = Frame.procEntryExit1(fr,unEx e)
-    in Nx (T.SEQ(unNx s,ret)) end
+    in Ex (T.ESEQ(T.SEQ(unNx s,ret), T.TEMP Frame.RV)) end
          
 fun constIntVar i =
     Ex (T.CONST i)
@@ -129,14 +129,14 @@ fun simpleVar (access, currentlevel) =
     let val (varlevel,varframeaccess) = access
         val varunique = case varlevel of 
                             Level(_,_,unique) => unique
-                          | StartLevel => raise StartLevelExc
+                          | StartLevel => (print "varunique\n";raise StartLevelExc)
         fun calcfraddr level =
             case level of
                 Level(currentframe,currentparentlevel,currentunique) =>
                     if varunique = currentunique
                     then T.TEMP(Frame.FP)
                     else T.MEM(calcfraddr(currentparentlevel))
-	          | StartLevel => raise StartLevelExc
+	          | StartLevel => (print "calcfraddr";raise StartLevelExc)
         val afp = calcfraddr currentlevel
         in Ex (Frame.exp varframeaccess afp) end
 
@@ -166,21 +166,9 @@ fun subScriptVar (a,i,u) =
                      T.LABEL f))))),
                T.MEM(T.CONST 0))
         )
-    (*
-        Ex(T.ESEQ(
-           T.SEQ(T.CJUMP(T.GT, size, i', t1, f),
-           T.SEQ(T.LABEL f,
-           T.SEQ(T.EXP(T.MEM(T.CONST 0)), (* raise segmentation fault to prevent values out of bound *)
-           T.SEQ(T.LABEL t1,
-           T.SEQ(T.CJUMP(T.GE, i', T.CONST 0, t2, f),
-                 T.LABEL t2))))),
-           T.MEM(T.BINOP(T.PLUS, baseaddr, offset)))
-        )
-        *)
     end
 
 (* mul by wordsize because all tiger values have the same size and minus 1 to get zero based offset *)
-
 fun fieldVar (a,i) =
     Ex (T.MEM(T.BINOP(T.PLUS, unEx(a),T.BINOP(T.MUL, T.CONST i, T.CONST Frame.wordSize))))
        
@@ -269,27 +257,29 @@ fun callFunction (s,curlev,calledlev,args) =
     let 
         val curunique = case curlev of
                             Level (_,_,u) => u
-                          | StartLevel => raise StartLevelExc
+                          | StartLevel => (print "callFunction\n";raise StartLevelExc)
         fun calcfraddr level =
             case level of
                 Level(calledfr,calledpl,calledunique) =>
                     if curunique = calledunique
                     then level
                     else calcfraddr(calledpl)
-	          | StartLevel => raise StartLevelExc
-    val calledfunlev = calcfraddr calledlev
-    val calledfunframe = case calledfunlev of
-                             Level (fr,_,_) => fr
-                           | StartLevel => raise StartLevelExc
-    val facc = getStaticLink(calledfunlev)
-    val sl = Frame.exp facc (T.TEMP Frame.FP)
-    (* TODO: 1. do(or not) something with sl *)
-	fun uex arg =
-	    unEx arg
-	val args' = map uex args
-    val _ = Frame.findEscArgs calledfunframe
-    val _ = print("Call length: "^Int.toString(length(Frame.getEsc ()))^"\n")
-    in Ex (T.CALL(T.NAME (Temp.namedlabel(s)), args')) end
+	          | StartLevel => level
+        val calledfunlev = calcfraddr calledlev
+        fun uex arg =
+            unEx arg
+        val args' = map uex args
+        (*val _ = print("Call length: "^Int.toString(length(Frame.getEsc ()))^"\n")*)
+    in  
+        case calledfunlev of
+            Level (fr,_,_) => let val facc = getStaticLink(calledfunlev)
+                                  (* TODO: 1. do(or not) something with sl *)
+                                  val sl = Frame.exp facc (T.TEMP Frame.FP)
+                                  val _ = Frame.findEscArgs fr
+                              in Ex (T.CALL(T.NAME (Temp.namedlabel(s)), args')) end
+          | StartLevel => Ex (Frame.externalCall(s,args'))
+    end
+
 
 fun assign (lvalue,rvalue) =
     Nx (T.MOVE(unEx lvalue,unEx rvalue))
@@ -338,8 +328,9 @@ fun forExp (var, lo, hi, body, ldone) =
 
 fun procEntryExit {level=lev, body=exp} =
     case lev of
-        Level (fr,_,_) => frags := Frame.PROC{body=unNx(exp), frame=fr} :: (!frags)
+        Level (fr,_,_) => let val b = Frame.procEntryExit1(fr,unEx exp)
+                          in frags := Frame.PROC{body=b, frame=fr} :: (!frags) end
                          (*print("FRAGS length: "^Int.toString(length (!frags))^"\n"); 
                          print("Formals length: "^Int.toString(length(Frame.formals fr))^"\n")*)
-      | _ => raise StartLevelExc
+      | _ => (print "procEntryExit\n";raise StartLevelExc)
 end

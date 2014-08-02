@@ -15,27 +15,30 @@ struct
   fun placePreFuns () =
     let open Symbol
         val env = enter(empty, symbol "print", FunEntry {formals = [Types.STRING], result = Types.UNIT,
-	                                                 level = Translate.outermost, label = Temp.newlabel()})  
+	                                                 level = Translate.outermost, label = Temp.namedlabel("printT")})  
         val env = enter(env, symbol "flush", FunEntry {formals = [], result = Types.UNIT, 
-	                                               level = Translate.outermost, label = Temp.newlabel()})  
+	                                               level = Translate.outermost, label = Temp.namedlabel("flushT")})  
         val env = enter(env, symbol "getchar", FunEntry {formals = [], result = Types.STRING, 
-	                                                 level = Translate.outermost, label = Temp.newlabel()})  
+	                                                 level = Translate.outermost, label = Temp.namedlabel("gecharT")})  
         val env = enter(env, symbol "ord", FunEntry {formals = [Types.STRING], result = Types.INT, 
-	                                             level = Translate.outermost, label = Temp.newlabel()})  
+	                                             level = Translate.outermost, label = Temp.namedlabel("ordT")})  
         val env = enter(env, symbol "chr", FunEntry {formals = [Types.INT], result = Types.STRING, 
-	                                             level = Translate.outermost, label = Temp.newlabel()})  
+	                                             level = Translate.outermost, label = Temp.namedlabel("chrT")})  
         val env = enter(env, symbol "size", FunEntry {formals = [Types.STRING], result = Types.INT, 
-	                                              level = Translate.outermost, label = Temp.newlabel()}) 
+	                                              level = Translate.outermost, label = Temp.namedlabel("sizeT")}) 
         val env = enter(env, symbol "substring", FunEntry {formals = [Types.STRING, Types.INT, Types.INT],
                                                            result = Types.STRING, level = Translate.outermost,
-							   label = Temp.newlabel()})
+							                               label = Temp.namedlabel("substringT")})
         val env = enter(env, symbol "concat", FunEntry {formals = [Types.STRING, Types.STRING],
                                                         result = Types.STRING, level = Translate.outermost,
-							label = Temp.newlabel()}) 
+							                            label = Temp.namedlabel("concatT")}) 
         val env = enter(env, symbol "not", FunEntry {formals = [Types.INT], result = Types.INT,
-	                                             level = Translate.outermost, label = Temp.newlabel()})  
+	                                             level = Translate.outermost, label = Temp.namedlabel("notT") })  
+        val env = enter(env, symbol "stringEqual", FunEntry {formals = [Types.STRING, Types.STRING],
+                                                             result = Types.INT, level = Translate.outermost,
+                                                             label = Temp.namedlabel("stringEqualT")})
         val env = enter(env, symbol "exit", FunEntry {formals = [Types.INT], result = Types.UNIT,
-	                                              level = Translate.outermost, label = Temp.newlabel()})  
+	                                              level = Translate.outermost, label = Temp.namedlabel("exit")})  
     in env end
 
   val base_tenv = placePrimitives()

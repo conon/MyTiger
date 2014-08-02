@@ -1,8 +1,8 @@
-#undef __STDC__
 #include <stdio.h>
+#include <stdlib.h>
 
 
-int *initArray(int size, int init)
+int *initArrayT(int size, int init)
 {
     int i;
     int *a = malloc(size*sizeof(int));
@@ -11,7 +11,7 @@ int *initArray(int size, int init)
     return a;
 }
 
-int *allocRecord(int size)
+int *allocRecordT(int size)
 {
     int i;
     int *p, *a;
@@ -25,9 +25,12 @@ int *allocRecord(int size)
 struct string {
     int length; 
     unsigned char chars[1];
-              };
+};
 
-int stringEqual(struct string *s, struct string *t)
+struct string consts[256];
+struct string empty={0,""};
+
+int stringEqualT(struct string *s, struct string *t)
 {
     int i;
     if (s==t) 
@@ -40,7 +43,7 @@ int stringEqual(struct string *s, struct string *t)
     return 1;
 }
 
-void print(struct string *s)
+void printT(struct string *s)
 {
     int i; 
     unsigned char *p=s->chars;
@@ -48,13 +51,11 @@ void print(struct string *s)
         putchar(*p);
 }
 
-void flush()
+void flushT()
 {
     fflush(stdout);
 }
 
-struct string consts[256];
-struct string empty={0,""};
 
 int main()
 {
@@ -67,7 +68,7 @@ int main()
     return tigermain(0 /* static link!? */);
 }
 
-int ord(struct string *s)
+int ordT(struct string *s)
 {
     if (s->length==0) 
         return -1;
@@ -75,7 +76,7 @@ int ord(struct string *s)
         return s->chars[0];
 }
 
-struct string *chr(int i)
+struct string *chrT(int i)
 {
     if (i<0 || i>=256) 
     {
@@ -85,12 +86,12 @@ struct string *chr(int i)
     return consts+i;
 }
 
-int size(struct string *s)
+int sizeT(struct string *s)
 { 
     return s->length;
 }
 
-struct string *substring(struct string *s, int first, int n)
+struct string *substringT(struct string *s, int first, int n)
 {
     if (first<0 || first+n>s->length)
     {
@@ -108,7 +109,7 @@ struct string *substring(struct string *s, int first, int n)
     return t;
 }
 
-struct string *concat(struct string *a, struct string *b)
+struct string *concatT(struct string *a, struct string *b)
 {
     if (a->length==0) 
         return b;
@@ -127,14 +128,13 @@ struct string *concat(struct string *a, struct string *b)
     }
 }
 
-int not(int i)
+int notT(int i)
 {
     return !i;
 }
 
-#undef getchar
 
-struct string *getchar()
+struct string *getcharT()
 {
     int i=getc(stdin);
     if (i==EOF) 

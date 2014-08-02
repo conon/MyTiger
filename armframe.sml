@@ -93,7 +93,7 @@ struct
         let val _ = if K > List.length(args) 
                     then esc := nil::(!esc) 
                     else print "Error: externalCall in armframe.sml"
-        in Tree.CALL(Tree.NAME(Temp.namedlabel s), args) end
+        in Tree.CALL(Tree.NAME(Temp.namedlabel(s^"T")), args) end
 
     fun makeseq nil =
         Tree.EXP(Tree.CONST 0)
