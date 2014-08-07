@@ -76,8 +76,8 @@ struct
 
     fun color {instrs, initial, spillCost, registers} =
         let 
-        val precolored = Set.union(Set.fromList(registers),Set.fromList(Frame.registerTemps)) (* set of int *)
-        val color = Set.foldl (fn (c,t) => Temp.Table.enter(t,c,c)) Frame.tempMap precolored (* initial colors(machine registers) *)
+        val precolored = Set.fromList(Frame.registerTemps) (* set of int *)
+        val color = Frame.tempMap
         (*
         val _ =  (print "initColor\n";
         Set.app (fn x => let val k = case Temp.Table.look(color,x) of SOME x => x | NONE => ~1
@@ -106,8 +106,10 @@ struct
 
 	    fun main (moveList,worklistMoves,adjList,degree,adjSet) =
 	    let val (flowgraph,nodes(* blocks *)) = MakeGraph.instrs2graph instrs
+            (*val _ = MakeGraph.printNodes (TextIO.stdOut,flowgraph)*)
             val Flow.FGRAPH{control=fgraph,def=deftable,use=usetable,ismove=ismovetable} = flowgraph
             val liveOut = Liveness.liveness flowgraph
+            val _ = Liveness.printliveouts (TextIO.stdOut,nodes,liveOut)
             (*val _ = print(Int.toString(length nodes))
             val _ = app (fn x => print (Int.toString x)) (List.concat(mapping(usetable,hd nodes)))
             val _ = (print "HEU\n\n";print (Graph.printgraph(nodes)))*)
@@ -166,7 +168,9 @@ struct
                                                  val worklistMoves' = Set.union(worklistMoves,defunionuse)
                                               in (moveList',worklistMoves',live') end
                                     | false => (moveList,worklistMoves,live))
+                        val _ = printSet("Lives':",live')
                         val live'' = Set.union(live',defset)
+                        val _ = printSet("Lives'':",live'')
                         fun defsI (d,(adjList,degree,adjSet)) =
                             let val _ = initial := d::(!initial)
                                 fun lives (l,(adjList,degree,adjSet)) =
@@ -179,6 +183,7 @@ struct
                         printTemptoSet("adjList",adjList,live'');
                         print("\n\n\n\n\n"))*)
                         val live''' = Set.union(useset,Set.difference(live'',defset))
+                        val _ = printSet("Lives''':",live''')
                   in instructions (uses,defs,ismoves,moveList',worklistMoves',adjList',degree',adjSet',live''') end
 
                 | instructions (nil,nil,nil,moveList,worklistMoves,adjList,degree,adjSet,live) =
@@ -326,19 +331,24 @@ struct
         val (moveList,worklistMoves,adjList,degree,adjSet) = foldl build (moveList,
                                                       worklistMoves,adjList,degree,adjSet) nodes
 
-        (*val _ = (print "initials: \n";
+        val _ = (print "initials: \n";
                  Set.app (fn x => print (Int.toString(x)^" ")) (Set.fromList(!initial));
-                 print "\n")*)
-        val initial' = Set.fromList(!initial)
+                 print "\n")
+        (* remove any machine registers(registers that their colors do not change) from initials *)
+        val initial' = Set.difference(Set.fromList(!initial),precolored)
+        (*
         val _ = printSet("worklistMoves",initial')
         val _ = printTemptoSet("adjList",adjList,initial');
         val _ = printTemptoInt("degree",degree,initial');
+        *)
         val _ = printTupleSet("adjSet",adjSet);
+        (*
         val _ = printTemptoSet("moveList",moveList,initial');
+        *)
 
         (* 4. make initial worklist *)
-        val (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistMoves) = foldl makeWorklist 
-                (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistMoves) (!initial)
+        val (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistMoves) = Set.foldl makeWorklist 
+                (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistMoves) initial'
 
         (*
         val _ = printSet("spillWorklist",spillWorklist)
@@ -372,7 +382,7 @@ struct
        val selectStack' = repeat(degree,simplifyWorklist',selectStack)
 
 
-      (*val _ = (print "selectStack: ";app (fn item => print(Int.toString(item)^" ")) selectStack';print "\n")*)
+      val _ = (print "selectStack: ";app (fn item => print(Int.toString(item)^" ")) selectStack';print "\n")
        (*val _ = if color = Temp.Table.empty then print "HOLA\n" else print "NO\n"*)
 
        (* 6. color the graph *)
@@ -386,6 +396,7 @@ struct
               else ()
            end
        val _ = checkAssignColors spilledNodes
+       (*
        fun checkInitialColoredNodes (i,c) =
            case Set.compare(i,c) of
                EQUAL => ()
@@ -394,20 +405,17 @@ struct
 
        val _ = printSet("coloredNodes",coloredNodes)
        val _ = printTemptoInt("color",color',initial')
-
-       (*
-       TODO: finish this, I changed Frame.register Temp.Table.table to Frame.registerStr Temp.Table.table
        *)
 
-       val color'' = foldl (fn (c,l) => (mapColor(color',c))::l) nil (!initial)
+       val color'' = Set.foldl (fn (c,l) => (mapColor(color',c))::l) nil initial'
        (*val _ = app (fn c => (print "colorList"; print(Int.toString(c)^" "); print "\n")) color''*)
 
        fun makeRegisterTable (n,t) =
            let val reg = mapColor(color',n)
            in Temp.Table.enter(t,n,Int.toString(reg)) end
-       val regt = Set.foldl makeRegisterTable Temp.Table.empty (initial')
+       val regt = Set.foldl makeRegisterTable Frame.tempMapStr initial'
 
-       (*val _ = (print "regt: "; Set.app (fn n => print(Int.toString(n)^": "^valOf(Temp.Table.look(regt,n))^" ")) (initial'); print "\n") *)
+       val _ = (print "regt: "; Set.app (fn n => print(Int.toString(n)^": "^valOf(Temp.Table.look(regt,n))^" ")) (initial'); print "\n")
 
        in (regt,color'') end (* main *)
     in (main(moveList,worklistMoves,adjList,degree,adjSet)) end (* color *)

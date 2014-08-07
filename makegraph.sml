@@ -2,6 +2,7 @@ structure MakeGraph :
 	  sig
 	      val instrs2graph : Assem.instr list ->
 			 Flow.flowgraph * Flow.Graph.node list
+          val printNodes : TextIO.outstream * Flow.flowgraph -> unit
 	  end =
 struct 
 exception TableNotFoundMakeGraph
@@ -44,6 +45,7 @@ fun instrs2graph instrlist =
 
       fun makeEdges block =
           let fun fetchBlock label =
+          (*print("LABEL"^Symbol.name(label)^"\n");*)
                   case Symbol.look(labeltb,label) of
                       SOME b => b
                     | NONE => raise TableNotFoundMakeGraph
@@ -58,4 +60,30 @@ fun instrs2graph instrlist =
      val _ = app makeEdges blocks
      val nodelist = Graph.nodes graph
     in (Flow.FGRAPH{control=graph,def=dsttb,use=srctb,ismove=ismovetb},nodelist) end
+
+
+   fun printNodes(out,flowgraph) =
+       let val Flow.FGRAPH{control,def,use,ismove} = flowgraph
+           val nodelist = Graph.nodes control
+           fun node n =
+               let val deflistlist = case Graph.Table.look(def,n) of
+                                         SOME d => d
+                                       | NONE => (print("No defs in node" ^ (Graph.nodename(n)) ^ "\n"); nil)
+                   val uselistlist = case Graph.Table.look(use,n) of
+                                         SOME u => u
+                                       | NONE =>  (print("No uses in node" ^ Graph.nodename(n) ^ "\n"); nil)
+                   fun printuse use =
+                       print (Temp.makestring(use) ^ "\n")
+                   fun printdef def =
+                       print (Temp.makestring(def) ^ "\n")
+                   val defuselistlist = ListPair.zip(deflistlist,uselistlist)
+               in  
+                   (print ("node " ^ Graph.nodename(n) ^ "\n");
+                    app (fn (deflist,uselist) => (print "defs:\n";
+                                                  app printdef deflist; 
+                                                  print "uses:\n";
+                                                  app printuse uselist;
+                                                  print "\n\n")) defuselistlist) 
+               end
+           in app node nodelist end
 end

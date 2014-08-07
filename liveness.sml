@@ -14,7 +14,6 @@ sig
     val show : TextIO.outstream * igraph -> unit
 
     val printliveouts : TextIO.outstream * Flow.Graph.node list * (Flow.Graph.node -> Temp.temp list)  -> unit
-    val printNodes : TextIO.outstream * Flow.flowgraph -> unit
 end =
 struct
     structure IGraph = Flow.Graph
@@ -174,24 +173,4 @@ struct
                 val strtemps' = Graph.nodename(n) ^ ": " ^ strtemps ^ "\n"
             in TextIO.output(out,strtemps') end
         in app node nodelist end
-
-   fun printNodes(out,flowgraph) =
-       let val Flow.FGRAPH{control,def,use,ismove} = flowgraph
-           val nodelist = Graph.nodes control
-           fun node n =
-               let val deflistlist = case Graph.Table.look(def,n) of
-                                         SOME d => d
-                                       | NONE => (print("No defs in node" ^ (Graph.nodename(n)) ^ "\n"); nil)
-                   val deflist = List.concat deflistlist
-                   val uselistlist = case Graph.Table.look(use,n) of
-                                         SOME u => u
-                                       | NONE =>  (print("No uses in node" ^ Graph.nodename(n) ^ "\n"); nil)
-                   val uselist = List.concat uselistlist
-                   fun printuse use =
-                       print ("node " ^ Graph.nodename(n) ^ " use " ^ (Temp.makestring use) ^ "\n")
-                   fun printdef def =
-                       print ("node " ^ Graph.nodename(n) ^ " def " ^ (Temp.makestring def) ^ "\n")
-               in (app printuse uselist; app printdef deflist) end
-           in app node nodelist end
-
 end

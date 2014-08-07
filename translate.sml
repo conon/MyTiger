@@ -255,17 +255,20 @@ fun createArray (size,init,unique) =
 
 fun callFunction (s,curlev,calledlev,args) =
     let 
-        val curunique = case curlev of
-                            Level (_,_,u) => u
+        val (curunique,currentframe) = case curlev of
+                            Level (cfr,_,u) => (u,cfr)
                           | StartLevel => (print "callFunction\n";raise StartLevelExc)
         fun calcfraddr level =
             case level of
                 Level(calledfr,calledpl,calledunique) =>
                     if curunique = calledunique
                     then level
-                    else calcfraddr(calledpl)
+                    else (print "YO\n";calcfraddr(calledpl))
 	          | StartLevel => level
         val calledfunlev = calcfraddr calledlev
+        val _ = if calledfunlev = curlev
+                then (print "YESYYY\n")
+                else (print "NOOOOO\n")
         fun uex arg =
             unEx arg
         val args' = map uex args

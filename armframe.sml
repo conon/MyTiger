@@ -11,8 +11,8 @@ struct
                   | STRING of Temp.label * string
     val wordSize = 4 (* arm word is 4 bytes *)
 
-    val registersStr = ["a1","a2","a3","a4","v1","v2","v3","v4",
-                     "v5","v6","v7","FP","IP","SP","LR","PC"]
+    val registersStr = ["r0","r1","r2","r3","r4","r5","r6","r7",
+                     "r8","r9","r10","fp","r12","sp","lr","pc"]
                      
     val a1 = Temp.newtemp() (* argument/result scratch register  *)
     val a2 = Temp.newtemp() (* argument/result scratch register *)
@@ -35,7 +35,6 @@ struct
     val FP = v8 
 
     (* register lists *)
-    val argregs = [a1,a2,a3,a4]
     val callesaves = [v1,v2,v3,v4,v5,v6,v7,v8,IP]
     val callersaves = [a1,a2,a3,a4]
     val specialregs = [SP,LR,PC]
@@ -53,6 +52,11 @@ struct
     val tempMap = List.foldl (fn ((key,value), table) => Temp.Table.enter(table,key,value)) Temp.Table.empty
                                                             (ListPair.zip(registerTemps,registers'))
 
+    val tempMapStr = List.foldl (fn ((key,value), table) => Temp.Table.enter(table,key,value)) Temp.Table.empty
+                                                            (ListPair.zip(registerTemps,registersStr))
+
+    val callargs = [a1,a2,a3,a4]
+
     fun newFrame {name : Temp.label, formals : bool list} =
     (*app (fn f => print((Bool.toString f) ^ " ")) formals; print "\nfinish\n";*)
         let fun formalsiter (fs,offset,counter,args) =
@@ -67,7 +71,7 @@ struct
             (*app (fn a => case a of 
                                InFrame k => (print ("FRAME " ^ (Int.toString k) ^ "\n"))
                              | InReg r => (print ("REGISTER" ^ (Int.toString r) ^ "\n"))) ff; *)
-            {name=name, formals=formalsiter(formals,0,0,argregs), locals=ref 0}
+            {name=name, formals=formalsiter(formals,0,0,callargs), locals=ref 0}
         end
     
     fun name {name = n, formals = _, locals=_} = n
@@ -101,28 +105,31 @@ struct
         exp
       | makeseq (exp::exps) = Tree.SEQ(exp,(makeseq exps))
 
-    fun findEscArgs frame =
-        let val fls = formals frame
+    fun findEscArgs calledframe =
+        let val cfls = formals calledframe
+            val _ = print("LENGTH :"^Int.toString(length(cfls))^"\n")
             fun iter (fs,i) =
                case fs of
-                   f::fs => (case f of
+                   f::fs =>(print("TIMES: "^Int.toString(i)^"\n"); (case f of
                                  InReg r => iter(fs,i+1)
                                | InFrame m => if i = 0
                                               then iter(fs,i+1) (* ignore static link *)
                                               else (print("find: "^Int.toString(i)^"\n");
-                                                    (i-1)::iter(fs,i+1)))
+                                                    (i-1)::iter(fs,i+1))))
                  | nil => nil
-        in esc := iter(fls,0)::(!esc) end
+            val e = iter(cfls,0)
+        in esc := e::(!esc) end
                         
         
 
     fun procEntryExit1(frame,body) =
         T.MOVE(T.TEMP RV, body)   (* Evaluate body and store the result to the Return Value register *)
 
-(*
+
     fun procEntryExit2(frame,body) =
         body @ [A.OPER{assem="", src=specialregs@callesaves, dst=[], jump=SOME []}]
-*)
+
+
     fun procEntryExit3(fr as {name=n,formals=f,locals=l},instrs) =
         let val numlocals = (!l)
             val startProlog = ".global _start\n\n"^

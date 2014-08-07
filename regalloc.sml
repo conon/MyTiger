@@ -25,6 +25,7 @@ struct
         let val initial' = Temp.Table.empty
             val spillCost' = (fn x => 1)
             val registers' = Frame.registers
+            val instrs' = Frame.procEntryExit2(frame,instrs)
             val (alloc,templist) = Color.color{instrs=instrs,initial=initial',
                                       spillCost=spillCost',registers=registers'}
             in (instrs,alloc) end

@@ -37,7 +37,8 @@ struct
             (* NOTE rv is not used *)
             let val a = munchArgs(0,args)
             in
-                emit(A.OPER{assem="bl `j0\n", src=[], dst=[], jump=SOME [name]})
+                (* force the usage of calling arguments with Frame.callargs *)
+                emit(A.OPER{assem="bl "^Symbol.name(name)^"\n", src=Frame.callargs, dst=[], jump=NONE})
             end
           | munchStm(T.MOVE(T.TEMP t1, T.TEMP t2)) =
             emit(A.MOVE{assem="mov `d0, `s0\n",src=t2, dst=t1})
@@ -89,10 +90,11 @@ struct
              (* NOTE r is not used *)
             let val a = munchArgs(0,args)
             in
-                result (fn r => emit(A.OPER{assem="bl `j0\n", src=[], dst=[], jump=SOME [name]}))
+                (* force the usage of calling arguments with Frame.callargs *)
+                result (fn r => emit(A.OPER{assem="bl "^Symbol.name(name)^"\n", src=Frame.callargs, dst=[], jump=NONE}))
             end
           | munchExp(T.NAME n) =
-            result (fn r => emit(A.OPER{assem="adr `d0, `j0"^"\n", src=[], dst=[r], jump=SOME [n]}))
+            result (fn r => emit(A.OPER{assem="adr `d0, "^Symbol.name(n)^"\n", src=[], dst=[r], jump=NONE}))
           | munchExp(T.MEM(T.BINOP(T.PLUS,e,T.CONST i))) =
             result (fn r => emit(A.MOVE{assem="ldr `d0, [`s0, #"^Int.toString(i)^"]"^"\n", 
                                         src=munchExp e, dst=r}))
@@ -103,14 +105,25 @@ struct
 	      | munchExp _ = raise TestExp "Out os expressions\n"
 
        and munchArgs (i,args) =
-           let fun iter (i,args) =
-               let val r = List.nth(Frame.registerTemps,i-1)
+           let val escs = Frame.getEsc()  (* TODO: *)
+               val esc = ref (hd escs handle Empty => nil)
+               val _ = Frame.removeEsc()
+
+               fun iter (i,args) =
+               let val r = List.nth(Frame.registerTemps,i)
                    (*val _ = print("TEST register: "^Temp.makestring(r)^"\n")*)
                in
                   case args of
-                      arg::args => (emit(A.MOVE{assem="mov `d0, `s0"^"\n", 
-                                               src=munchExp arg, dst=r});
-                                    r::iter(i+1,args))
+                      arg::args => let val res = r::iter(i+1,args) 
+                                       val _ = emit(A.MOVE{assem="mov `d0, `s0"^"\n", 
+                                              src=munchExp arg, dst=r})
+                                       val t1 = i >= Frame.K
+                                       val t2 = List.exists (fn n => if n = i then true else false) (!esc)
+                                   in
+                                       if t1 andalso not t2
+                                       then (esc := i::(!esc);res)
+                                       else res
+                                   end
                     | nil => nil
                end
                fun regs esclst =
@@ -118,12 +131,10 @@ struct
                       e::nil => "r"^Int.toString(e)
                     | e::es => "r"^Int.toString(e)^","^regs(es)
                     | nil => ""
-               val nl = iter(1,args)
-               val escs = Frame.getEsc()  (* TODO: *)
-               val esc = hd escs handle Empty => nil
-               val _ = Frame.removeEsc()
-               val regstr = regs esc
-               val _ = if List.null(esc) 
+
+               val nl = iter(0,args)
+               val regstr = regs (!esc)
+               val _ = if List.null(!esc) 
                        then () 
                        else emit(A.OPER{assem="stmia sp, {"^regstr^"}\n", src=[], dst=[], jump=NONE})
            in nl end
