@@ -38,7 +38,8 @@ struct
             let val a = munchArgs(0,args)
             in
                 (* force the usage of calling arguments with Frame.callargs *)
-                emit(A.OPER{assem="bl "^Symbol.name(name)^"\n", src=Frame.callargs, dst=[], jump=NONE})
+                (emit(A.OPER{assem="bl "^Symbol.name(name)^"\n", src=Frame.callargs, dst=[], jump=NONE});
+                 emit(A.MOVE{assem="mov `d0, `s0"^"\n", src=Frame.RV, dst=rv}))
             end
           | munchStm(T.MOVE(T.TEMP t1, T.TEMP t2)) =
             emit(A.MOVE{assem="mov `d0, `s0\n",src=t2, dst=t1})
