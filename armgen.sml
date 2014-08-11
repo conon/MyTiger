@@ -5,6 +5,10 @@ struct
     structure Frame = ArmFrame
     exception TestStm of string
     exception TestExp of string
+
+    fun i2s i =
+        if i < 0 then "-" ^ Int.toString (~i) else Int.toString i
+
     fun codegen frame (stm: Tree.stm) : Assem.instr list =
         let val ilist = ref (nil: A.instr list)
             val esc = ref nil
@@ -28,10 +32,10 @@ struct
             
           | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.BINOP(T.MUL,T.CONST i1,
                      T.CONST i2))), e)) =
-            emit(A.OPER{assem="str `s0, [`d0, #"^Int.toString(i1*i2)^"]"^"\n",
+            emit(A.OPER{assem="str `s0, [`d0, #"^i2s(i1*i2)^"]"^"\n",
                         src=[munchExp e], dst=[t], jump=NONE})
           | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.CONST i)), e)) =
-            emit(A.OPER{assem="str `s0, [`d0, #"^Int.toString(i)^"]"^"\n", 
+            emit(A.OPER{assem="str `s0, [`d0, #"^i2s(i)^"]"^"\n", 
                         src=[munchExp e], dst=[t], jump=NONE})
           | munchStm(T.MOVE(T.TEMP rv, T.CALL(T.NAME name,args))) =
             (* NOTE rv is not used *)
@@ -85,7 +89,7 @@ struct
             result (fn r => emit(A.OPER{assem="sdiv `d0, `s0, `s1\n",
                                 src=[munchExp e1,munchExp e2], dst=[r], jump=NONE}))
           | munchExp (T.CONST i) =
-            result (fn r => emit(A.OPER{assem="ldr `d0, =" ^ Int.toString i ^ "\n", 
+            result (fn r => emit(A.OPER{assem="ldr `d0, =" ^ i2s(i) ^ "\n", 
                                 src=[], dst=[r], jump=NONE}))
           | munchExp(T.CALL(T.NAME name,args)) =
              (* NOTE r is not used *)
@@ -97,7 +101,7 @@ struct
           | munchExp(T.NAME n) =
             result (fn r => emit(A.OPER{assem="adr `d0, "^Symbol.name(n)^"\n", src=[], dst=[r], jump=NONE}))
           | munchExp(T.MEM(T.BINOP(T.PLUS,e,T.CONST i))) =
-            result (fn r => emit(A.MOVE{assem="ldr `d0, [`s0, #"^Int.toString(i)^"]"^"\n", 
+            result (fn r => emit(A.MOVE{assem="ldr `d0, [`s0, #"^i2s(i)^"]"^"\n", 
                                         src=munchExp e, dst=r}))
           | munchExp(T.MEM e) =
             result (fn r => emit(A.MOVE{assem="ldr `d0, [`s0]"^"\n", src=munchExp e, dst=r}))
@@ -129,8 +133,8 @@ struct
                end
                fun regs esclst =
                   case esclst of
-                      e::nil => "r"^Int.toString(e)
-                    | e::es => "r"^Int.toString(e)^","^regs(es)
+                      e::nil => "r"^i2s(e)
+                    | e::es => "r"^i2s(e)^","^regs(es)
                     | nil => ""
 
                val nl = iter(0,args)
