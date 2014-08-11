@@ -84,9 +84,9 @@ struct
                 false => (print "INREG_ALLOC\n";InReg (Temp.newtemp()))
               | true => (print "INFRAME_ALLOC\n";l := !l+1; InFrame (~(!l) * wordSize))
 
-    val esc = ref nil
-    fun getEsc () = rev(!esc)
-    fun removeEsc () = esc := tl(rev(!esc))
+    val esc : (int list * int) list ref = ref nil
+    fun getEsc () = hd(rev(!esc)) handle List.Empty => (print("raise getEsc\n"); (nil,0))
+    fun removeEsc () = esc := tl(rev(!esc)) handle List.Empty => ()
 
     fun exp facc fp =
         case facc of
@@ -95,7 +95,7 @@ struct
 
     fun externalCall (s,args) =
         let val _ = if K > List.length(args) 
-                    then esc := nil::(!esc) 
+                    then esc := (nil,0)::(!esc) 
                     else print "Error: externalCall in armframe.sml"
         in Tree.CALL(Tree.NAME(Temp.namedlabel(s^"T")), args) end
 
@@ -105,9 +105,12 @@ struct
         exp
       | makeseq (exp::exps) = Tree.SEQ(exp,(makeseq exps))
 
-    fun findEscArgs calledframe =
+    fun findEscArgs (calledframe,parentframe) =
         let val cfls = formals calledframe
-            val _ = print("LENGTH :"^Int.toString(length(cfls))^"\n")
+            val locals = case parentframe of
+                             {locals,...} : frame => !locals
+            val _ = print("LENGTH ARGS :"^Int.toString(length(cfls))^"\n")
+            val _ = print("LENGTH LOCALS :"^Int.toString(locals)^"\n")
             fun iter (fs,i) =
                case fs of
                    f::fs =>(print("TIMES: "^Int.toString(i)^"\n"); (case f of
@@ -118,7 +121,7 @@ struct
                                                     (i-1)::iter(fs,i+1))))
                  | nil => nil
             val e = iter(cfls,0)
-        in esc := e::(!esc) end
+        in esc := (e,locals)::(!esc) end
                         
         
 
@@ -131,7 +134,9 @@ struct
 
 
     fun procEntryExit3(fr as {name=n,formals=f,locals=l},instrs) =
-        let val numlocals = (!l)
+        let val (_,numlocals) = getEsc()
+            val numlocals = numlocals * wordSize
+            val _ = removeEsc()
             val startProlog = ".global _start\n\n"^
                               ".text\n\n"^
                               Symbol.name(n)^"\n"^

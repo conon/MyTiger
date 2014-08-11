@@ -110,10 +110,8 @@ struct
 	      | munchExp _ = raise TestExp "Out os expressions\n"
 
        and munchArgs (i,args) =
-           let val escs = Frame.getEsc()  (* TODO: *)
-               val esc = ref (hd escs handle Empty => nil)
-               val _ = Frame.removeEsc()
-
+           let val (escs,_) = Frame.getEsc()
+               val esc = ref escs
                fun iter (i,args) =
                let val r = List.nth(Frame.registerTemps,i)
                    (*val _ = print("TEST register: "^Temp.makestring(r)^"\n")*)
@@ -133,15 +131,13 @@ struct
                end
                fun regs esclst =
                   case esclst of
-                      e::nil => "r"^i2s(e)
-                    | e::es => "r"^i2s(e)^","^regs(es)
-                    | nil => ""
+                      e::nil => emit(A.OPER{assem="str r"^i2s(e)^", [sp, #4]"^"\n", src=[], dst=[], jump=NONE})
+                    | e::es => (emit(A.OPER{assem="str r"^i2s(e)^", [sp, #4]"^"\n", src=[], dst=[], jump=NONE}); 
+                                regs(es))
+                    | nil => ()
 
                val nl = iter(0,args)
                val regstr = regs (!esc)
-               val _ = if List.null(!esc) 
-                       then () 
-                       else emit(A.OPER{assem="stmia sp, {"^regstr^"}\n", src=[], dst=[], jump=NONE})
            in nl end
 	in
 	    munchStm stm;

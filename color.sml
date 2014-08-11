@@ -168,9 +168,9 @@ struct
                                                  val worklistMoves' = Set.union(worklistMoves,defunionuse)
                                               in (moveList',worklistMoves',live') end
                                     | false => (moveList,worklistMoves,live))
-                        val _ = printSet("Lives':",live')
+                        (*val _ = printSet("Lives':",live')*)
                         val live'' = Set.union(live',defset)
-                        val _ = printSet("Lives'':",live'')
+                        (*val _ = printSet("Lives'':",live'')*)
                         fun defsI (d,(adjList,degree,adjSet)) =
                             let val _ = initial := d::(!initial)
                                 fun lives (l,(adjList,degree,adjSet)) =
@@ -183,7 +183,7 @@ struct
                         printTemptoSet("adjList",adjList,live'');
                         print("\n\n\n\n\n"))*)
                         val live''' = Set.union(useset,Set.difference(live'',defset))
-                        val _ = printSet("Lives''':",live''')
+                        (*val _ = printSet("Lives''':",live''')*)
                   in instructions (uses,defs,ismoves,moveList',worklistMoves',adjList',degree',adjSet',live''') end
 
                 | instructions (nil,nil,nil,moveList,worklistMoves,adjList,degree,adjSet,live) =

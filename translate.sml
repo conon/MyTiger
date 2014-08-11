@@ -275,10 +275,13 @@ fun callFunction (s,curlev,calledlev,args) =
         (*val _ = print("Call length: "^Int.toString(length(Frame.getEsc ()))^"\n")*)
     in  
         case calledfunlev of
-            Level (fr,_,_) => let val facc = getStaticLink(calledfunlev)
+            Level (fr,plv,_) => let val facc = getStaticLink(calledfunlev)
                                   (* TODO: 1. do(or not) something with sl *)
                                   val sl = Frame.exp facc (T.TEMP Frame.FP)
-                                  val _ = Frame.findEscArgs fr
+                                  val pfr = case plv of
+                                                Level(f,_,_) => f
+                                              | StartLevel => fr
+                                  val _ = Frame.findEscArgs (fr,pfr)
                               in Ex (T.CALL(T.NAME (Temp.namedlabel(s)), args')) end
           | StartLevel => Ex (Frame.externalCall(s,args'))
     end

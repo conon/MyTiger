@@ -38,8 +38,8 @@ sig
        2) getEsc
        3) removeEsc
     *)
-    val findEscArgs : frame -> unit
-    val getEsc : unit -> int list list (* list of escaping arguments *)
+    val findEscArgs : frame * frame -> unit (* calling level * parent of calling level *)
+    val getEsc : unit -> (int list * int) (* list of escaping arguments *)
     val removeEsc : unit -> unit (* removes evaluated list of escaping arguments *)
 
     val procEntryExit1 : frame * Tree.exp -> Tree.stm

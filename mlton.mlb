@@ -38,10 +38,8 @@ graph.sml
 flowgraph.sml
 makegraph.sml
 liveness.sml
-(*
 color.sml
 regalloc.sml
-*)
 main.sml
 
 end
