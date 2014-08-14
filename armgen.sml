@@ -129,15 +129,15 @@ struct
                                    end
                     | nil => nil
                end
-               fun regs esclst =
+               fun regs (esclst,i) =
                   case esclst of
-                      e::nil => emit(A.OPER{assem="str r"^i2s(e)^", [sp, #4]"^"\n", src=[], dst=[], jump=NONE})
-                    | e::es => (emit(A.OPER{assem="str r"^i2s(e)^", [sp, #4]"^"\n", src=[], dst=[], jump=NONE}); 
-                                regs(es))
+                      e::nil => emit(A.OPER{assem="str r"^i2s(e)^", [sp, #"^Int.toString(i)^"]"^"\n", src=[], dst=[], jump=NONE})
+                    | e::es => (emit(A.OPER{assem="str r"^i2s(e)^", [sp, #"^Int.toString(i)^"]"^"\n", src=[], dst=[], jump=NONE}); 
+                                regs(es,i+4))
                     | nil => ()
 
                val nl = iter(0,args)
-               val regstr = regs (!esc)
+               val regstr = regs((!esc),4)
            in nl end
 	in
 	    munchStm stm;
