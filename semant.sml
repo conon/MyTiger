@@ -230,7 +230,7 @@ fun transProg ast =
 				   val label' = Temp.namedlabel(Symbol.name(n))
 				   val lev' = Tr.newLevel {parent=lev, name=label',
 							   formals = formals'} 
-				   val _ = levs := lev'::(!levs)
+				   val _ = levs := (!levs) @ [lev']
 			       in Symbol.enter(venv, n, Env.FunEntry{level=lev', label=label',
 								     formals = map #ty p, result = r}) end
 		    end
@@ -256,6 +256,7 @@ fun transProg ast =
 	            end
                 (* 5. check the body expression type if matches the return type *)
 		val _ = app evalbody all
+        val _ = levs := nil
 	    in
 		if !anyErrors
 		then ({tenv = tenv, venv = venv},lev,expslist)
@@ -318,7 +319,7 @@ fun transProg ast =
                                  if !anyErrors
                                  then {exp=Tr.dummy, ty = Types.UNIT}
                                  else if result = Types.UNIT
-                                 (* lev -> current level , level -> called function level *)
+                                 (* lev -> current level , level -> calling function level *)
                                  then {exp=Tr.callFunction(Symbol.name func,lev,level,res), ty = Types.UNIT}
                                  else {exp=Tr.callFunction(Symbol.name func,lev,level,res), ty = result}
                              end

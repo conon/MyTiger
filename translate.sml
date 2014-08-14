@@ -82,7 +82,8 @@ fun formals lev =
                                     f::fs => (lev,f)::aux(fs)
                                   | nil => nil
                              val acc = aux formals
-                         in tl(acc) end (* drop the static link *)
+                             val _ = print("FORMALS(translate): "^Int.toString(length(acc))^"\n")
+                         in List.drop(acc,1) end (* drop the static link *)
       | StartLevel => (print "formals\n";raise StartLevelExc)
 
 fun allocLocal lev esc =
@@ -253,29 +254,50 @@ fun createArray (size,init,unique) =
           ))
     end
 
-fun callFunction (s,curlev,calledlev,args) =
+fun callFunction (s,curlev,callinglev,args) =
     let 
-        val (curunique,currentframe) = case curlev of
-                            Level (cfr,_,u) => (u,cfr)
+        (* calling level should never have a StartLevel parent EXCEPT library functions *)
+        val (currentframe,curparentframe,_) = case curlev of
+                            Level x => x
                           | StartLevel => (print "callFunction\n";raise StartLevelExc)
+        fun uex arg =
+            unEx arg
+        val args' = map uex args
+    in
+        case callinglev of
+            Level (callingframe,callingparentframe,_) => (Frame.findEscArgs (callingframe, currentframe);
+                                                                      Ex (T.CALL(T.NAME (Temp.namedlabel(s)), args')))
+          | StartLevel => Ex (Frame.externalCall(s,args'))
+    end
+
+
+                (* escaping formals are defined in callingframe and
+                   escaping locals (which are needed for subtracting the fp in procExit3)
+                   are defined in currentframe 
+                   I use this findEscArgs function to record escaping formals and locals
+                   instead of finding and passing the static link *)
+    (*
+
         fun calcfraddr level =
             case level of
-                Level(calledfr,calledpl,calledunique) =>
-                    if curunique = calledunique
+                Level(callingfr,callingpl,callingunique) =>
+                    if curunique = callingunique
                     then level
-                    else (print "YO\n";calcfraddr(calledpl))
+                    else (print "YO\n";calcfraddr(callingpl))
 	          | StartLevel => level
-        val calledfunlev = calcfraddr calledlev
-        val _ = if calledfunlev = curlev
+        val callingfunlev = calcfraddr callinglev
+        (*
+        val _ = if callingfunlev = curlev
                 then (print "YESYYY\n")
                 else (print "NOOOOO\n")
+        *)
         fun uex arg =
             unEx arg
         val args' = map uex args
         (*val _ = print("Call length: "^Int.toString(length(Frame.getEsc ()))^"\n")*)
     in  
-        case calledfunlev of
-            Level (fr,plv,_) => let val facc = getStaticLink(calledfunlev)
+        case callingfunlev of
+            Level (fr,plv,_) => let val facc = getStaticLink(callingfunlev)
                                   (* TODO: 1. do(or not) something with sl *)
                                   val sl = Frame.exp facc (T.TEMP Frame.FP)
                                   val pfr = case plv of
@@ -283,8 +305,12 @@ fun callFunction (s,curlev,calledlev,args) =
                                               | StartLevel => fr
                                   val _ = Frame.findEscArgs (fr,pfr)
                               in Ex (T.CALL(T.NAME (Temp.namedlabel(s)), args')) end
-          | StartLevel => Ex (Frame.externalCall(s,args'))
+          | StartLevel => if curlev = callinglev 
+                          then (print "YES\n";Ex (T.CALL(T.NAME (Temp.namedlabel(s)), args')) )
+                          else (print "NO\n";Ex (Frame.externalCall(s,args')))
+
     end
+    *)
 
 
 fun assign (lvalue,rvalue) =

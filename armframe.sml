@@ -46,7 +46,7 @@ struct
     val registerTemps = [a1,a2,a3,a4,v1,v2,v3,v4,
                          v5,v6,v7,v8,IP,SP,LR,PC]
     val preRegisterTemps = [a1,a2,a3,a4,SP,LR,PC]
-    val registers = [0,1,2,3,4,5,6,7,9,10,11,12,13]
+    val registers = [0,1,2,3,4,5,6,7,8,9,10,12] 
     val registers' = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
 
     val tempMap = List.foldl (fn ((key,value), table) => Temp.Table.enter(table,key,value)) Temp.Table.empty
@@ -96,7 +96,7 @@ struct
     fun externalCall (s,args) =
         let val _ = if K > List.length(args) 
                     then esc := (nil,0)::(!esc) 
-                    else print "Error: externalCall in armframe.sml"
+                    else print("Error: externalCall in armframe.sml: "^s^"\n")
         in Tree.CALL(Tree.NAME(Temp.namedlabel(s^"T")), args) end
 
     fun makeseq nil =
