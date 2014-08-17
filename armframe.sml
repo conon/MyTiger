@@ -141,7 +141,7 @@ struct
                               ".text\n\n"^
                               Symbol.name(n)^"\n"^
                               "mov fp, sp\n"^
-                              "sub sp, sp, #58\n"^ (* TODO: sub size, dummy *)
+                              "sub sp, sp, #80\n"^ (* TODO: sub size, dummy *)
                               "str fp, [sp]\n"
             val startEpilog = "mov sp, fp\n"^
                               "finish:\n"^
@@ -151,7 +151,7 @@ struct
                             "sub fp, fp, #"^Int.toString(numlocals)^"\n"^
                             "stmdb fp, {r4-r10,r12,lr}\n"^
                             "mov fp, sp\n"^
-                            "sub sp, sp, #58\n"^
+                            "sub sp, sp, #80\n"^
                             "str fp, [sp]\n"
            val funEpilog = "mov sp, fp\n"^
                            "ldr fp, [sp]\n"^

@@ -231,6 +231,7 @@ fun transProg ast =
 				   val lev' = Tr.newLevel {parent=lev, name=label',
 							   formals = formals'} 
 				   val _ = levs := (!levs) @ [lev']
+                   val _ = print("SEMANT: "^Symbol.name(label')^"\n")
 			       in Symbol.enter(venv, n, Env.FunEntry{level=lev', label=label',
 								     formals = map #ty p, result = r}) end
 		    end
@@ -239,7 +240,7 @@ fun transProg ast =
 		val venv' = foldl addf venv nrp
 		val bp = ListPair.zip(bodies,poses)
 		val bprp = ListPair.zip(bp,rp)
-		val all = ListPair.zip(bprp, !levs)
+		val all = ListPair.zip(bprp, rev(!levs))
                 (* 4. update the enviroment with the name of each
 		   parameter and its type as varentry *)
 		fun enterpar (({name = name, ty = ty, escape = escape},acc),venv) = 
@@ -256,7 +257,6 @@ fun transProg ast =
 	            end
                 (* 5. check the body expression type if matches the return type *)
 		val _ = app evalbody all
-        val _ = levs := nil
 	    in
 		if !anyErrors
 		then ({tenv = tenv, venv = venv},lev,expslist)
