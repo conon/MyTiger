@@ -7,6 +7,7 @@ struct
     datatype access = InFrame of int
                     | InReg of Temp.temp
     type frame = {name : Temp.label, formals : access list, locals : int ref}
+    (* escapes will be used to hold all escaping variables of a calling function *)
     datatype frag = PROC of {body: Tree.stm, frame: frame}
                   | STRING of Temp.label * string
     val wordSize = 4 (* arm word is 4 bytes *)
@@ -84,9 +85,15 @@ struct
                 false => (print "INREG_ALLOC\n";InReg (Temp.newtemp()))
               | true => (print "INFRAME_ALLOC\n";l := !l+1; InFrame (~(!l) * wordSize))
 
-    val esc : (int list * int) list ref = ref nil
-    fun getEsc () = hd(rev(!esc)) handle List.Empty => (print("raise getEsc\n"); (nil,0))
-    fun removeEsc () = esc := tl(rev(!esc)) handle List.Empty => ()
+    val esc : (Temp.label * int list * int) list ref = ref [(Temp.namedlabel("_start"),nil,0)]
+
+    fun getEsc name = 
+        let val res = List.find (fn (n,f,l) => if name = n then true else false) (!esc)
+        in 
+            case res of
+               SOME (n,f,l) => (f,l)
+             | NONE => (nil,0)
+        end
 
     fun exp facc fp =
         case facc of
@@ -95,7 +102,7 @@ struct
 
     fun externalCall (s,args) =
         let val _ = if K > List.length(args) 
-                    then esc := (nil,0)::(!esc) 
+                    then ()
                     else print("Error: externalCall in armframe.sml: "^s^"\n")
         in Tree.CALL(Tree.NAME(Temp.namedlabel(s^"T")), args) end
 
@@ -105,8 +112,9 @@ struct
         exp
       | makeseq (exp::exps) = Tree.SEQ(exp,(makeseq exps))
 
-    fun findEscArgs (calledframe,parentframe) =
-        let val cfls = formals calledframe
+    fun findEscArgs (callingframe,parentframe) =
+        let val cfls = formals callingframe
+            val n = name callingframe
             val locals = case parentframe of
                              {locals,...} : frame => !locals
             val _ = print("LENGTH ARGS :"^Int.toString(length(cfls))^"\n")
@@ -121,7 +129,7 @@ struct
                                                     (i-1)::iter(fs,i+1))))
                  | nil => nil
             val e = iter(cfls,0)
-        in esc := (e,locals)::(!esc) end
+        in esc := (n,e,locals)::(!esc) end
                         
         
 
@@ -134,9 +142,10 @@ struct
 
 
     fun procEntryExit3(fr as {name=n,formals=f,locals=l},instrs) =
-        let val (_,numlocals) = getEsc()
+        let val (_,numlocals) = getEsc n
             val numlocals = numlocals * wordSize
-            val _ = removeEsc()
+            val _ = print("NAME: "^Symbol.name(n)^"\n")
+            val _ = print("NUMLOCALS: "^Int.toString(numlocals)^"\n")
             val startProlog = ".global _start\n\n"^
                               ".text\n\n"^
                               Symbol.name(n)^"\n"^

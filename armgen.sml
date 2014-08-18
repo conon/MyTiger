@@ -110,7 +110,8 @@ struct
 	      | munchExp _ = raise TestExp "Out os expressions\n"
 
        and munchArgs (i,args) =
-           let val (escs,_) = Frame.getEsc()
+           let val n = Frame.name frame
+               val (escs,_) = Frame.getEsc n
                val esc = ref escs
                fun iter (i,args) =
                let val r = List.nth(Frame.registerTemps,i)
