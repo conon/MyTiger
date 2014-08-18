@@ -61,7 +61,6 @@ fun checkEqualIf(lhs,rhs) =
 fun transProg ast =
     let
 	val nested = ref 0
-	val levs = ref nil
         (* the transTy functions translate Absyn.ty types to Types.ty types so they can be put on the
                symbol table(enviroment) and also ensures that the (rhs)types was already defined
                (the only predefined types are INT and STRING) *)	
@@ -218,29 +217,31 @@ fun transProg ast =
 		val resultsty' = map resty resultsty (* a list of results type *)
 		val rp = ListPair.zip(resultsty',params')
 		val nrp = ListPair.zip(names,rp)
-		fun addf((n ,(r , p : {name : Symbol.symbol, ty : Types.ty, escape : bool ref} list)), venv) = 
+		fun addf((n ,(r , p : {name : Symbol.symbol, ty : Types.ty, escape : bool ref} list)), (venv,levlist)) = 
 		    let fun formalstobool f =
 			    case f of
 				f::fs => (!f) :: formalstobool(fs)
 			      | nil => nil
-		    in    if !anyErrors
-			  then venv
+		    in    
+              if !anyErrors
+			  then (venv,nil)
 			  else let val formals = map #escape p
 				   val formals' = formalstobool formals
 				   val label' = Temp.namedlabel(Symbol.name(n))
 				   val lev' = Tr.newLevel {parent=lev, name=label',
 							   formals = formals'} 
-				   val _ = levs := (!levs) @ [lev']
                    val _ = print("SEMANT: "^Symbol.name(label')^"\n")
-			       in Symbol.enter(venv, n, Env.FunEntry{level=lev', label=label',
-								     formals = map #ty p, result = r}) end
+			       in 
+                     (Symbol.enter(venv, n, Env.FunEntry{level=lev', label=label',
+								     formals = map #ty p, result = r}), levlist @ [lev']) 
+                   end
 		    end
 	        (* 3. update the current enviroment with the function name which contains: the result type
 				and all the pairs(name,type) of the parameters as funentry *)
-		val venv' = foldl addf venv nrp
+		val (venv',levs) = foldl addf (venv,nil) nrp
 		val bp = ListPair.zip(bodies,poses)
 		val bprp = ListPair.zip(bp,rp)
-		val all = ListPair.zip(bprp, rev(!levs))
+		val all = ListPair.zip(bprp, levs)
                 (* 4. update the enviroment with the name of each
 		   parameter and its type as varentry *)
 		fun enterpar (({name = name, ty = ty, escape = escape},acc),venv) = 
