@@ -32,11 +32,11 @@ struct
             
           | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.BINOP(T.MUL,T.CONST i1,
                      T.CONST i2))), e)) =
-            emit(A.OPER{assem="str `s0, [`d0, #"^i2s(i1*i2)^"]"^"\n",
-                        src=[munchExp e], dst=[t], jump=NONE})
+            emit(A.OPER{assem="str `d0, [`s0, #"^i2s(i1*i2)^"]"^"\n",
+                        dst=[munchExp e], src=[t], jump=NONE})
           | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.CONST i)), e)) =
-            emit(A.OPER{assem="str `s0, [`d0, #"^i2s(i)^"]"^"\n", 
-                        src=[munchExp e], dst=[t], jump=NONE})
+            emit(A.OPER{assem="str `d0, [`s0, #"^i2s(i)^"]"^"\n", 
+                        dst=[munchExp e], src=[t], jump=NONE})
           | munchStm(T.MOVE(T.TEMP rv, T.CALL(T.NAME name,args))) =
             (* NOTE rv is not used *)
             let val a = munchArgs(0,args)
