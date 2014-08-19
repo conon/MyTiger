@@ -158,15 +158,15 @@ fun subScriptVar (a,i,u) =
         val t1 = Temp.newlabel()
         val t2 = Temp.newlabel()
     in
-    Ex(
+    Ex (
         T.ESEQ(T.SEQ(T.CJUMP(T.LT, size, i', f, t1),
                T.SEQ(T.LABEL t1,
                T.SEQ(T.CJUMP(T.LE, i', T.CONST 0, f, t2),
-               T.SEQ(T.LABEL t2,
-               T.SEQ(T.EXP(T.MEM(T.BINOP(T.PLUS, baseaddr, offset))),
-                     T.LABEL f))))),
-               T.MEM(T.CONST 0))
-        )
+               T.SEQ(T.LABEL f,
+               T.SEQ(T.EXP(T.MEM(T.CONST 0)),
+                     T.LABEL t2))))),
+               T.MEM(T.BINOP(T.PLUS, baseaddr, offset)))
+       )
     end
 
 (* mul by wordsize because all tiger values have the same size and minus 1 to get zero based offset *)
