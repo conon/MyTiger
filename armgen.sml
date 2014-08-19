@@ -34,9 +34,18 @@ struct
                      T.CONST i2))), e)) =
             emit(A.OPER{assem="str `d0, [`s0, #"^i2s(i1*i2)^"]"^"\n",
                         dst=[munchExp e], src=[t], jump=NONE})
+
+            (* loading a record field on a register *)
+          | munchStm(T.MOVE(T.TEMP t1, T.MEM(T.BINOP(T.PLUS,T.TEMP t2,T.BINOP(T.MUL,
+                     T.CONST i1, T.CONST i2))))) =
+            emit(A.MOVE{assem="ldr `d0, [`s0, #"^i2s(i1*i2)^"]"^"\n", src=t2,
+                        dst=t1})
+
+            (* storing a variable in a record index *)
           | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.CONST i)), e)) =
-            emit(A.OPER{assem="str `d0, [`s0, #"^i2s(i)^"]"^"\n", 
-                        dst=[munchExp e], src=[t], jump=NONE})
+            emit(A.MOVE{assem="str `d0, [`s0, #"^i2s(i)^"]"^"\n", src=t,
+                        dst=munchExp e})
+
           | munchStm(T.MOVE(T.TEMP rv, T.CALL(T.NAME name,args))) =
             (* NOTE rv is not used *)
             let val a = munchArgs(0,args)
@@ -76,7 +85,11 @@ struct
 	      | munchStm _ = raise TestStm "Out of statements\n"
 
 
-	    and munchExp (T.BINOP(T.PLUS,e1,e2)) =
+	    and 
+            munchExp (T.BINOP(T.MUL,T.CONST i1,T.CONST i2)) =
+            result (fn r => emit(A.OPER{assem="ldr `d0, =" ^ i2s(i1*i2) ^ "\n",
+                                src=[], dst=[r], jump=NONE}))
+          | munchExp (T.BINOP(T.PLUS,e1,e2)) =
             result (fn r => emit(A.OPER{assem="add `d0, `s0, `s1\n",
                                 src=[munchExp e1,munchExp e2], dst=[r], jump=NONE}))
           | munchExp (T.BINOP(T.MINUS,e1,e2)) =
@@ -100,6 +113,11 @@ struct
             end
           | munchExp(T.NAME n) =
             result (fn r => emit(A.OPER{assem="adr `d0, "^Symbol.name(n)^"\n", src=[], dst=[r], jump=NONE}))
+
+            (* loading a record field in a register *)
+          | munchExp(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.BINOP(T.MUL,T.CONST i1,T.CONST i2)))) =
+            result (fn r => emit(A.MOVE{assem="ldr `d0, [`s0, #"^i2s(i1*i2)^"]"^"\n", 
+                                        src=t, dst=r}))
           | munchExp(T.MEM(T.BINOP(T.PLUS,e,T.CONST i))) =
             result (fn r => emit(A.MOVE{assem="ldr `d0, [`s0, #"^i2s(i)^"]"^"\n", 
                                         src=munchExp e, dst=r}))
