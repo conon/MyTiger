@@ -11,6 +11,8 @@ struct
     datatype frag = PROC of {body: Tree.stm, frame: frame}
                   | STRING of Temp.label * string
     val wordSize = 4 (* arm word is 4 bytes *)
+    val fpsub = 4 (* local are subtracted with an additional 4 bytes in order to not
+                     overwrite the initial fp subtract *)
 
     val registersStr = ["r0","r1","r2","r3","r4","r5","r6","r7",
                      "r8","r9","r10","fp","r12","sp","lr","pc"]
@@ -83,7 +85,7 @@ struct
     (* in case of escaping locals goes to lower addresses *)
 	        case var of
                 false => (print "INREG_ALLOC\n";InReg (Temp.newtemp()))
-              | true => (print "INFRAME_ALLOC\n";l := !l+1; InFrame (~(!l) * wordSize))
+              | true => (print "INFRAME_ALLOC\n";l := !l+1; InFrame (~(!l) * wordSize - fpsub))
 
     val esc : (Temp.label * int list * int) list ref = ref [(Temp.namedlabel("_start"),nil,0)]
 
@@ -143,20 +145,21 @@ struct
 
     fun procEntryExit3(fr as {name=n,formals=f,locals=l},instrs) =
         let val (_,numlocals) = getEsc n
-            val numlocals = numlocals * wordSize
+            val numlocals = numlocals * wordSize + fpsub
             val _ = print("NAME: "^Symbol.name(n)^"\n")
             val _ = print("NUMLOCALS: "^Int.toString(numlocals)^"\n")
-            val startProlog = ".global _start\n\n"^
+            val n' = Symbol.name(n)
+            val startProlog = ".global tigermain\n\n"^
                               ".text\n\n"^
-                              Symbol.name(n)^"\n"^
-                              "mov fp, sp\n"^
+                              ".type "^n'^", %function"^"\n"^
+                               n'^":"^"\n"^
+                              "stmfd sp!, {fp, lr}"^"\n"^
+                              "add fp, sp, #4"^"\n"^
                               "sub sp, sp, #80\n"^ (* TODO: sub size, dummy *)
-                              "str fp, [sp]\n"
-            val startEpilog = "mov sp, fp\n"^
-                              "finish:\n"^
-                              "mov r7, #1\n"^
-                              "swi 0x00\n"
-            val funProlog = Symbol.name(n)^":\n"^
+                              "str fp, [sp]"^"\n"
+            val startEpilog = "sub sp, fp, #4"^"\n"^
+                              "ldmfd sp!, {fp, pc}"^"\n"
+            val funProlog =  n'^":\n"^
                             "sub fp, fp, #"^Int.toString(numlocals)^"\n"^
                             "stmdb fp, {r4-r10,r12,lr}\n"^
                             "mov fp, sp\n"^
@@ -164,9 +167,9 @@ struct
                             "str fp, [sp]\n"
            val funEpilog = "mov sp, fp\n"^
                            "ldr fp, [sp]\n"^
-                           "sub fp, fp, #"^Int.toString(numlocals)^"\n"^
-                           "ldmdb fp, {r4-r10,r12,pc}\n"
-           val sn = Symbol.symbol "_start:"
+                           "sub r3, fp, #"^Int.toString(numlocals)^"\n"^
+                           "ldmdb r3, {r4-r10,r12,pc}\n"
+           val sn = Symbol.symbol "tigermain"
         in
             if n = sn
             then {prolog=startProlog, body=instrs, epilog=startEpilog}

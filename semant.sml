@@ -516,7 +516,7 @@ fun transProg ast =
 		trexp(init)
             end
     in
-        let val startLevel = Tr.newLevel {parent=Tr.outermost, name=Temp.namedlabel "_start:", formals=nil}
+        let val startLevel = Tr.newLevel {parent=Tr.outermost, name=Temp.namedlabel "tigermain", formals=nil}
 	    val breaklabel = Tr.initLoop
 	    val {exp=e,ty=_} = transExp(Env.base_venv, Env.base_tenv, ast, startLevel, breaklabel, nil)
             val _ = Tr.procEntryExit {level=startLevel, body=e}

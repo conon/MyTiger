@@ -89,6 +89,15 @@ struct
             munchExp (T.BINOP(T.MUL,T.CONST i1,T.CONST i2)) =
             result (fn r => emit(A.OPER{assem="ldr `d0, =" ^ i2s(i1*i2) ^ "\n",
                                 src=[], dst=[r], jump=NONE}))
+          | munchExp (T.BINOP(T.PLUS,T.CONST i1,T.CONST i2)) =
+            result (fn r => emit(A.OPER{assem="ldr `d0, =" ^ i2s(i1+i2) ^ "\n",
+                                src=[], dst=[r], jump=NONE}))
+          | munchExp (T.BINOP(T.MINUS,T.CONST i1,T.CONST i2)) =
+            result (fn r => emit(A.OPER{assem="ldr `d0, =" ^ i2s(i1-i2) ^ "\n",
+                                src=[], dst=[r], jump=NONE}))
+          | munchExp (T.BINOP(T.DIV,T.CONST i1,T.CONST i2)) =
+            result (fn r => emit(A.OPER{assem="ldr `d0, =" ^ i2s(i1 div i2) ^ "\n",
+                                src=[], dst=[r], jump=NONE}))
           | munchExp (T.BINOP(T.PLUS,e1,e2)) =
             result (fn r => emit(A.OPER{assem="add `d0, `s0, `s1\n",
                                 src=[munchExp e1,munchExp e2], dst=[r], jump=NONE}))
@@ -114,7 +123,7 @@ struct
           | munchExp(T.NAME n) =
             result (fn r => emit(A.OPER{assem="adr `d0, "^Symbol.name(n)^"\n", src=[], dst=[r], jump=NONE}))
 
-            (* loading a record field in a register *)
+             (* loading a record field in a register *)
           | munchExp(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.BINOP(T.MUL,T.CONST i1,T.CONST i2)))) =
             result (fn r => emit(A.MOVE{assem="ldr `d0, [`s0, #"^i2s(i1*i2)^"]"^"\n", 
                                         src=t, dst=r}))
