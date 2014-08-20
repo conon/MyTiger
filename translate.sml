@@ -159,9 +159,9 @@ fun subScriptVar (a,i,u) =
         val t2 = Temp.newlabel()
     in
     Ex (
-        T.ESEQ(T.SEQ(T.CJUMP(T.LT, size, i', f, t1),
+        T.ESEQ(T.SEQ(T.CJUMP(T.LE, size, i', f, t1),
                T.SEQ(T.LABEL t1,
-               T.SEQ(T.CJUMP(T.LE, i', T.CONST 0, f, t2),
+               T.SEQ(T.CJUMP(T.LT, i', T.CONST 0, f, t2),
                T.SEQ(T.LABEL f,
                T.SEQ(T.EXP(T.MEM(T.CONST 0)),
                      T.LABEL t2))))),
