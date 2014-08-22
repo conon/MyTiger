@@ -244,7 +244,7 @@ struct
                         val (activeMoves',worklistMoves',moveList') = enableMoves (unionRes,activeMoves,
                                                                                    worklistMoves,moveList)
                         val spillWorklist' = Set.difference(spillWorklist,mset)
-                    in if moveRelated(m,moveList,activeMoves,worklistMoves)
+                    n if moveRelated(m,moveList,activeMoves,worklistMoves)
                        then (simplifyWorklist,Set.union(freezeWorklist,mset),degree',spillWorklist',
                              activeMoves',worklistMoves',moveList',coalescedNodes,selectStack)
                        else (Set.union(simplifyWorklist,mset),freezeWorklist,degree',spillWorklist',
@@ -291,11 +291,7 @@ struct
 
         fun assignColors(selectStack,adjList,coloredNodes,color,spilledNodes,coalescedNodes,alias) = 
                 (* temp::temps ... -> spilledNodes * coloredNodes * color *)
-            let fun makeColors k =
-                    if k = ~1
-                    then nil
-                    else k :: makeColors(k-1)
-                fun iter (n::selectStack,spilledNodes,coloredNodes,color) =
+            let fun iter (n::selectStack,spilledNodes,coloredNodes,color) =
                     let val adjListn = mapAdjList(adjList,n)
                         fun diffcolors(w,okColor) =
                             let val g = getAlias(w,alias,coalescedNodes)
@@ -305,7 +301,7 @@ struct
                                     in Set.difference(okColor,Set.singleton mapc) end
                                else okColor
                             end
-                        val okColors = Set.fromList(makeColors(K-1))
+                        val okColors = Set.fromList(Frame.registers)
                         val okColors' = Set.foldl diffcolors okColors adjListn
                         in if Set.isEmpty okColors'
                            then iter(selectStack,Set.add(spilledNodes,n),coloredNodes,color)
@@ -331,18 +327,20 @@ struct
         val (moveList,worklistMoves,adjList,degree,adjSet) = foldl build (moveList,
                                                       worklistMoves,adjList,degree,adjSet) nodes
 
+        (*
         val _ = (print "initials: \n";
                  Set.app (fn x => print (Int.toString(x)^" ")) (Set.fromList(!initial));
                  print "\n")
+        *)
         (* remove any machine registers(registers that their colors do not change) from initials *)
         val initial' = Set.difference(Set.fromList(!initial),precolored)
         (*
         val _ = printSet("worklistMoves",initial')
         val _ = printTemptoSet("adjList",adjList,initial');
-        val _ = printTemptoInt("degree",degree,initial');
         *)
-        val _ = printTupleSet("adjSet",adjSet);
+        val _ = printTemptoInt("degree",degree,initial');
         (*
+        val _ = printTupleSet("adjSet",adjSet);
         val _ = printTemptoSet("moveList",moveList,initial');
         *)
 
@@ -382,7 +380,7 @@ struct
        val selectStack' = repeat(degree,simplifyWorklist',selectStack)
 
 
-      val _ = (print "selectStack: ";app (fn item => print(Int.toString(item)^" ")) selectStack';print "\n")
+      (*val _ = (print "selectStack: ";app (fn item => print(Int.toString(item)^" ")) selectStack';print "\n")*)
        (*val _ = if color = Temp.Table.empty then print "HOLA\n" else print "NO\n"*)
 
        (* 6. color the graph *)
@@ -415,7 +413,9 @@ struct
            in Temp.Table.enter(t,n,Int.toString(reg)) end
        val regt = Set.foldl makeRegisterTable Frame.tempMapStr initial'
 
+        (*
        val _ = (print "regt: "; Set.app (fn n => print(Int.toString(n)^": "^valOf(Temp.Table.look(regt,n))^" ")) (initial'); print "\n")
+       *)
 
        in (regt,color'') end (* main *)
     in (main(moveList,worklistMoves,adjList,degree,adjSet)) end (* color *)
