@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
 
 int *initArrayT(int size, int init)
 {
@@ -142,3 +142,24 @@ struct string *getcharT()
     else 
         return consts+i;
 }
+
+struct string* itoaT(int num)
+{
+    char *str = malloc(sizeof(char)*32);
+    struct string *t;
+    int len;
+    int i;
+
+    sprintf(str, "%d", num);
+
+    len = strlen(str);
+
+    t = malloc(sizeof(int)+len);
+    t->length = len;
+    for(i = 0; i < len; i++)
+        t->chars[i] = str[i];
+
+    return t;
+}
+
+

@@ -46,8 +46,8 @@ struct
             emit(A.MOVE{assem="str `d0, [`s0, #"^i2s(i)^"]"^"\n", src=t,
                         dst=munchExp e})
 
+            (* calling a function and storing the result on return value register *)
           | munchStm(T.MOVE(T.TEMP rv, T.CALL(T.NAME name,args))) =
-            (* NOTE rv is not used *)
             let val a = munchArgs(0,args)
             in
                 (* force the usage of calling arguments with Frame.callargs *)
@@ -56,10 +56,15 @@ struct
             end
           | munchStm(T.MOVE(T.TEMP t1, T.TEMP t2)) =
             emit(A.MOVE{assem="mov `d0, `s0\n",src=t2, dst=t1})
+
           | munchStm(T.MOVE(T.TEMP t, e)) =
             emit(A.MOVE{assem="mov `d0, `s0\n", src=munchExp e, dst=t})
+
+            (* storing expression to memory *)
           | munchStm(T.MOVE(T.MEM e1,e2)) =
-            emit(A.MOVE{assem="str `s0, `d0, #4\n", src=munchExp e2, dst=munchExp e1})
+            emit(A.MOVE{assem="str `s0, [`d0]"^"\n", src=munchExp e2, 
+                        dst=munchExp e1})
+
           | munchStm (T.MOVE(e1,e2)) =
             emit(A.MOVE{assem="ldr `d0, `s0\n", dst=munchExp e1, src=munchExp e2}) 
 
@@ -114,7 +119,6 @@ struct
             result (fn r => emit(A.OPER{assem="ldr `d0, =" ^ i2s(i) ^ "\n", 
                                 src=[], dst=[r], jump=NONE}))
           | munchExp(T.CALL(T.NAME name,args)) =
-             (* NOTE r is not used *)
             let val a = munchArgs(0,args)
             in
                 (* force the usage of calling arguments with Frame.callargs *)
