@@ -3,10 +3,10 @@ sig
     structure Frame : FRAME
     type allocation = Frame.registerStr Temp.Table.table
     val color : {instrs: Assem.instr list,
-                 initial : allocation,
+                 init : Temp.temp list,
                  spillCost : Graph.node -> int,
                  registers : Frame.register list}
-                 -> allocation * Temp.temp list
+                 -> allocation * Temp.temp list * Temp.temp list
 end
 
 structure Color : COLOR =
@@ -47,7 +47,7 @@ struct
     fun mapColor (table,node) = 
         case Temp.Table.look(table,node) of
             SOME n => n
-          | NONE => (print "mapcolor ";raise TableNotFoundColor)
+          | NONE => (print "mapcolor "; ~1)
     fun mapAlias (table,node) = 
         case Temp.Table.look(table,node) of
             SOME n => n
@@ -74,7 +74,7 @@ struct
          print("\n");TextIO.flushOut(TextIO.stdOut))
 
 
-    fun color {instrs, initial, spillCost, registers} =
+    fun color {instrs, init, spillCost, registers} =
         let 
         val precolored = Set.fromList(Frame.registerTemps) (* set of int *)
         val color = Frame.tempMap
@@ -106,7 +106,7 @@ struct
 
 	    fun main (moveList,worklistMoves,adjList,degree,adjSet) =
 	    let val (flowgraph,nodes(* blocks *)) = MakeGraph.instrs2graph instrs
-            (*val _ = MakeGraph.printNodes (TextIO.stdOut,flowgraph)*)
+            val _ = MakeGraph.printNodes (TextIO.stdOut,flowgraph)
             val Flow.FGRAPH{control=fgraph,def=deftable,use=usetable,ismove=ismovetable} = flowgraph
             val liveOut = Liveness.liveness flowgraph
             val _ = Liveness.printliveouts (TextIO.stdOut,nodes,liveOut)
@@ -266,7 +266,7 @@ struct
                                  else n
                       | nil => raise RegisterOverflow (* if spilling is needed give up *)
 
-                val n = chooseNode(Set.listItems simplifyWorklist)
+                val n = hd (Set.listItems simplifyWorklist) handle List.Empty => (print("simplify: simplifyworklist empty\n"); ~1)
                 (* TODO: augment to full implementation, handle spill nodes *)
                 (* Note: decrementDegree is evaluated first, before substracting n from sipmlifyWorklist *)
                 val adjacentRes = adjacent(n,adjL,selectStack,coalescedNodes)
@@ -344,6 +344,8 @@ struct
         val _ = printTemptoSet("moveList",moveList,initial');
         *)
 
+        val initial' = if List.null(init) then initial' else (Set.fromList init)
+
         (* 4. make initial worklist *)
         val (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistMoves) = Set.foldl makeWorklist 
                 (spillWorklist,freezeWorklist,simplifyWorklist,moveList,activeMoves,worklistMoves) initial'
@@ -361,7 +363,7 @@ struct
                                                               moveList,coalescedNodes,spillWorklist,adjList)
                (*val _ = printSet("simplifyWorklist",simplifyWorklist')*)
             in if (Set.isEmpty(swl'))
-               then stack'
+               then (*printTemptoInt("degree",d,initial'*)stack'
                else repeat(d',swl',stack')
             end
 
@@ -393,7 +395,8 @@ struct
               then (print "SpilledNodes not Empty!!!\n")
               else ()
            end
-       val _ = checkAssignColors spilledNodes
+       (*val _ = checkAssignColors spilledNodes*)
+       val _ = printSet("spilledNodes",spilledNodes)
        (*
        fun checkInitialColoredNodes (i,c) =
            case Set.compare(i,c) of
@@ -405,7 +408,7 @@ struct
        val _ = printTemptoInt("color",color',initial')
        *)
 
-       val color'' = Set.foldl (fn (c,l) => (mapColor(color',c))::l) nil initial'
+       (*val color'' = Set.foldl (fn (c,l) => (mapColor(color',c))::l) nil initial'*)
        (*val _ = app (fn c => (print "colorList"; print(Int.toString(c)^" "); print "\n")) color''*)
 
        fun makeRegisterTable (n,t) =
@@ -417,7 +420,7 @@ struct
        val _ = (print "regt: "; Set.app (fn n => print(Int.toString(n)^": "^valOf(Temp.Table.look(regt,n))^" ")) (initial'); print "\n")
        *)
 
-       in (regt,color'') end (* main *)
+       in (regt,Set.listItems spilledNodes,Set.listItems coloredNodes) end (* main *)
     in (main(moveList,worklistMoves,adjList,degree,adjSet)) end (* color *)
 
 end
