@@ -231,7 +231,7 @@ fun createRecord (fexps,n) =
 		    iter(fexps,0)
 	    end
 	val r = Temp.newtemp()
-	val cr = Frame.externalCall("initRecord",[T.CONST n])
+	val cr = Frame.externalCall("allocRecord",[T.CONST n])
     in Ex (T.ESEQ(T.SEQ(T.MOVE(T.TEMP r,cr), placeFields(fexps,T.TEMP r)),T.TEMP r)) end
 
 fun findArraySize unique =

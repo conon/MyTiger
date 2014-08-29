@@ -154,12 +154,47 @@ struct string* itoaT(int num)
 
     len = strlen(str);
 
-    t = malloc(sizeof(int)+len);
+    t = malloc(len);
     t->length = len;
     for(i = 0; i < len; i++)
         t->chars[i] = str[i];
 
     return t;
+}
+
+struct string* getStringT()
+{
+    char str[80];
+    struct string *t;
+    int len;
+    int i;
+
+    fgets(str,80,stdin);
+    len = strlen(str) - 1; /* remove new line */
+
+    t = malloc(sizeof(int) + sizeof(char) * len);
+    t->length = len;
+    for(i = 0; i < t->length; i++)
+        t->chars[i] = str[i];
+
+    return t;
+}
+
+
+int strToIntT(struct string *str)
+{
+    int len = str->length;
+    int i;
+    int num = 0;
+
+    for(i = 0; i < str->length; i++)
+    {
+        num *= 10;
+        num += str->chars[i] - '0';
+    }
+
+    return num;
+
 }
 
 

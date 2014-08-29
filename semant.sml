@@ -304,7 +304,7 @@ fun transProg ast =
                     let fun iter ((argtype,formaltype),exps) =
                             let val {exp = e, ty = argtype'} = trexp(argtype)
                             in
-                                if actual_ty argtype' = actual_ty formaltype
+                                if checkEqual(actual_ty argtype', actual_ty formaltype)
                                 then exps@[e]
                                 else (error pos "expression type does not match of declaration"; exps)
                             end

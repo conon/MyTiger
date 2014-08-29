@@ -20,6 +20,16 @@ struct
 		       t
 		    end
 
+        fun cmp branch =
+            case branch of
+               T.EQ => "beq"
+             | T.NE => "bne"
+             | T.LT => "blt"
+             | T.GT => "bgt"
+             | T.LE => "ble"
+             | T.GE => "bge"
+             | _ => (print("armcodegen: impossible\n");"")
+
 	    fun munchStm (T.SEQ(a,b)) =
 	        (munchStm a; munchStm b)
           | munchStm (T.EXP exp) =
@@ -68,25 +78,16 @@ struct
           | munchStm (T.MOVE(e1,e2)) =
             emit(A.MOVE{assem="ldr `d0, `s0\n", dst=munchExp e1, src=munchExp e2}) 
 
+          | munchStm(T.CJUMP(branch,e1,T.CONST i,lt,lf)) =
+            emit(A.OPER{assem="cmp `s0, #" ^ Int.toString(i) ^ "\n" ^ (cmp branch) ^ " `j0\n",
+            src=[munchExp e1], dst=[], jump=SOME [lt,lf]})
+          | munchStm(T.CJUMP(branch,T.CONST i,e2,lt,lf)) =
+            emit(A.OPER{assem="cmp `s0, #" ^ Int.toString(i) ^ "\n" ^ (cmp branch) ^ " `j0\n",
+            src=[munchExp e2], dst=[], jump=SOME [lt,lf]})
+          | munchStm(T.CJUMP(branch,e1,e2,lt,lf)) =
+            emit(A.OPER{assem="cmp `s0, `s1" ^ "\n" ^ (cmp branch) ^ " `j0\n",
+            src=[munchExp e1,munchExp e2], dst=[], jump=SOME [lt,lf]})
 
-          | munchStm(T.CJUMP(T.EQ,e1,e2,lt,lf)) =
-            emit(A.OPER{assem="cmp `s0, `s1" ^ "\n" ^ "beq `j0\n",
-            src=[munchExp e1,munchExp e2], dst=[], jump=SOME [lt,lf]})
-          | munchStm(T.CJUMP(T.NE,e1,e2,lt,lf)) =
-            emit(A.OPER{assem="cmp `s0, `s1" ^ "\n" ^ "bne `j0\n",
-            src=[munchExp e1,munchExp e2], dst=[], jump=SOME [lt,lf]})
-          | munchStm(T.CJUMP(T.LT,e1,e2,lt,lf)) =
-            emit(A.OPER{assem="cmp `s0, `s1" ^ "\n" ^ "blt `j0\n",
-            src=[munchExp e1,munchExp e2], dst=[], jump=SOME [lt,lf]})
-          | munchStm(T.CJUMP(T.GT,e1,e2,lt,lf)) =
-            emit(A.OPER{assem="cmp `s0, `s1" ^ "\n" ^ "bgt `j0\n",
-            src=[munchExp e1,munchExp e2], dst=[], jump=SOME [lt,lf]})
-          | munchStm(T.CJUMP(T.LE,e1,e2,lt,lf)) =
-            emit(A.OPER{assem="cmp `s0, `s1" ^ "\n" ^ "ble `j0\n",
-            src=[munchExp e1,munchExp e2], dst=[], jump=SOME [lt,lf]})
-          | munchStm(T.CJUMP(T.GE,e1,e2,lt,lf)) =
-            emit(A.OPER{assem="cmp `s0, `s1" ^ "\n" ^ "bge `j0\n",
-            src=[munchExp e1,munchExp e2], dst=[], jump=SOME [lt,lf]})
 	      | munchStm _ = raise TestStm "Out of statements\n"
 
 

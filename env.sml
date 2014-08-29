@@ -41,6 +41,10 @@ struct
 	                                              level = Translate.outermost, label = Temp.namedlabel("exit")})  
         val env = enter(env, symbol "itoa", FunEntry {formals = [Types.INT], result = Types.STRING,
 	                                              level = Translate.outermost, label = Temp.namedlabel("itoaT")})  
+        val env = enter(env, symbol "getString", FunEntry {formals = [], result = Types.STRING,
+	                                           level = Translate.outermost, label = Temp.namedlabel("getStringT")})  
+        val env = enter(env, symbol "strToInt", FunEntry {formals = [Types.STRING], result = Types.INT,
+	                                           level = Translate.outermost, label = Temp.namedlabel("strToIntT")})  
     in env end
 
   val base_tenv = placePrimitives()

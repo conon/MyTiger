@@ -24,6 +24,20 @@ struct
 
     val newinstrs = ref nil
 
+    (* An idea for spilling is to change the currents instruction use to def
+       forcing register allocator to use that new register somewhere else 
+       e.g
+            newtemp = 136
+            if 117 was spilled
+            A.OPER{assem="cmp `s0, `s1" ^ "\n" ^ (cmp branch) ^ " `j0\n",
+            src=[117,118], dst=[], jump=SOME [lt,lf]}
+
+            replace with
+            (Assem.OPER{assem="ldr `d0, [fp, #-8]"^"\n", 
+             dst=[136], src=[], jump=NONE})
+            A.OPER{assem="cmp `s0, `d1" ^ "\n" ^ (cmp branch) ^ " `j0\n",
+            src=[118], dst=[136], jump=SOME [lt,lf]}
+            *)
     fun rewriteprogram (instrs,spills) = 
        let
            fun transforminstrs (instrs) =

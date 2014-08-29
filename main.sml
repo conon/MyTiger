@@ -43,7 +43,7 @@ structure Main = struct
                                                            (*print("i "^Int.toString(i)^
                                                             "s "^Int.toString(s)^" ")*)
                                                 | NONE => (*print("NOt found i "^Int.toString(i)^"\n");*)"")))
-         val {prolog, body, epilog } = Frame.procEntryExit3(frame,instrs)
+         val {prolog, body, epilog } = Frame.procEntryExit3(frame,instrs')
          (*val format0 = Assem.format(Temp.makestring)*)
          (*val _ = RegAlloc.test*)
       in

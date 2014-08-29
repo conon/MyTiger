@@ -83,7 +83,7 @@ fun instrs2graph instrlist =
                                                   app printdef deflist; 
                                                   print "uses:\n";
                                                   app printuse uselist;
-                                                  print "\n\n")) defuselistlist) 
+                                                  print "\n\n")) (rev defuselistlist))
                end
            in app node nodelist end
 end
