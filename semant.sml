@@ -54,7 +54,7 @@ fun checkEqual(lhs, rhs) =
       | _ => false
 
 fun checkEqualIf(lhs,rhs) =
-    case (lhs,rhs) of
+    case (actual_ty lhs,actual_ty rhs) of
         (Types.UNIT, Types.UNIT) => true
       | _ => checkEqual(lhs,rhs)
 
@@ -252,7 +252,7 @@ fun transProg ast =
 		        val venv'' = foldl enterpar venv' pa
 		        val {exp = funbody, ty = expty} = transExp(venv'', tenv, body, lev, breaklabel, expslist)
 		    in
-			if actual_ty resulty = expty
+			if checkEqualIf(resulty, expty)
 		        then Tr.procEntryExit {level=lev, body=funbody}
 		        else (error pos "result type does not match expression type"; ())
 	            end
@@ -304,7 +304,7 @@ fun transProg ast =
                     let fun iter ((argtype,formaltype),exps) =
                             let val {exp = e, ty = argtype'} = trexp(argtype)
                             in
-                                if checkEqual(actual_ty argtype', actual_ty formaltype)
+                                if checkEqual(argtype', formaltype)
                                 then exps@[e]
                                 else (error pos "expression type does not match of declaration"; exps)
                             end

@@ -53,16 +53,24 @@ struct
 
             (* storing a variable in a record index *)
           | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.CONST i)), e)) =
-            emit(A.MOVE{assem="str `d0, [`s0, #"^i2s(i)^"]"^"\n", src=t,
-                        dst=munchExp e})
+            emit(A.OPER{assem="str `s0, [`s1, #"^i2s(i)^"]"^"\n", src=[munchExp e, t],
+                        dst=[], jump=NONE})
 
             (* calling a function and storing the result on return value register *)
           | munchStm(T.MOVE(T.TEMP rv, T.CALL(T.NAME name,args))) =
-            let val a = munchArgs(0,args)
+            let 
             in
                 (* force the usage of calling arguments with Frame.callargs *)
-                (emit(A.OPER{assem="bl "^Symbol.name(name)^"\n", src=Frame.callargs, dst=[], jump=NONE});
-                 emit(A.MOVE{assem="mov `d0, `s0"^"\n", src=Frame.RV, dst=rv}))
+		 (emit(A.OPER{assem="str r0, [sp, #4]"^"\n", src=Frame.callargs, dst=[], jump=NONE});
+		 emit(A.OPER{assem="str r1, [sp, #8]"^"\n", src=[Frame.a2], dst=[], jump=NONE});
+		 emit(A.OPER{assem="str r2, [sp, #12]"^"\n", src=[Frame.a3], dst=[], jump=NONE});
+		 emit(A.OPER{assem="str r3, [sp, #16]"^"\n", src=[Frame.a4], dst=[], jump=NONE});
+                 emit(A.OPER{assem="bl "^Symbol.name(name)^"\n", src=munchArgs(0,args), dst=[], jump=NONE});
+                 emit(A.MOVE{assem="mov `d0, `s0"^"\n", src=Frame.RV, dst=rv});
+		 emit(A.OPER{assem="ldr r0, [sp, #4]"^"\n", src=[], dst=Frame.callargs, jump=NONE});
+		 emit(A.OPER{assem="ldr r1, [sp, #8]"^"\n", src=[], dst=[Frame.a2], jump=NONE});
+		 emit(A.OPER{assem="ldr r2, [sp, #12]"^"\n", src=[], dst=[Frame.a3], jump=NONE});
+		 emit(A.OPER{assem="ldr r3, [sp, #16]"^"\n", src=[], dst=[Frame.a4], jump=NONE}))
             end
           | munchStm(T.MOVE(T.TEMP t1, T.TEMP t2)) =
             emit(A.MOVE{assem="mov `d0, `s0\n",src=t2, dst=t1})
@@ -78,12 +86,14 @@ struct
           | munchStm (T.MOVE(e1,e2)) =
             emit(A.MOVE{assem="ldr `d0, `s0\n", dst=munchExp e1, src=munchExp e2}) 
 
+	    (*
           | munchStm(T.CJUMP(branch,e1,T.CONST i,lt,lf)) =
             emit(A.OPER{assem="cmp `s0, #" ^ Int.toString(i) ^ "\n" ^ (cmp branch) ^ " `j0\n",
             src=[munchExp e1], dst=[], jump=SOME [lt,lf]})
           | munchStm(T.CJUMP(branch,T.CONST i,e2,lt,lf)) =
             emit(A.OPER{assem="cmp `s0, #" ^ Int.toString(i) ^ "\n" ^ (cmp branch) ^ " `j0\n",
             src=[munchExp e2], dst=[], jump=SOME [lt,lf]})
+*)
           | munchStm(T.CJUMP(branch,e1,e2,lt,lf)) =
             emit(A.OPER{assem="cmp `s0, `s1" ^ "\n" ^ (cmp branch) ^ " `j0\n",
             src=[munchExp e1,munchExp e2], dst=[], jump=SOME [lt,lf]})
@@ -120,10 +130,22 @@ struct
             result (fn r => emit(A.OPER{assem="ldr `d0, =" ^ i2s(i) ^ "\n", 
                                 src=[], dst=[r], jump=NONE}))
           | munchExp(T.CALL(T.NAME name,args)) =
-            let val a = munchArgs(0,args)
+            let 
+                val t = Temp.newtemp()
             in
                 (* force the usage of calling arguments with Frame.callargs *)
-                result (fn r => emit(A.OPER{assem="bl "^Symbol.name(name)^"\n", src=Frame.callargs, dst=[], jump=NONE}))
+             result (fn r =>
+		 (emit(A.OPER{assem="str r0, [sp, #4]"^"\n", src=Frame.callargs, dst=[], jump=NONE});
+		 emit(A.OPER{assem="str r1, [sp, #8]"^"\n", src=[Frame.a2], dst=[], jump=NONE});
+		 emit(A.OPER{assem="str r2, [sp, #12]"^"\n", src=[Frame.a3], dst=[], jump=NONE});
+		 emit(A.OPER{assem="str r3, [sp, #16]"^"\n", src=[Frame.a4], dst=[], jump=NONE});
+                 emit(A.OPER{assem="bl "^Symbol.name(name)^"\n", src=munchArgs(0,args), dst=[], jump=NONE});
+                 emit(A.MOVE{assem="mov `d0, `s0"^"\n", src=Frame.RV, dst=r});
+		 emit(A.OPER{assem="ldr r0, [sp, #4]"^"\n", src=[], dst=Frame.callargs, jump=NONE});
+		 emit(A.OPER{assem="ldr r1, [sp, #8]"^"\n", src=[], dst=[Frame.a2], jump=NONE});
+		 emit(A.OPER{assem="ldr r2, [sp, #12]"^"\n", src=[], dst=[Frame.a3], jump=NONE});
+		 emit(A.OPER{assem="ldr r3, [sp, #16]"^"\n", src=[], dst=[Frame.a4], jump=NONE}))
+                 )
             end
           | munchExp(T.NAME n) =
             result (fn r => emit(A.OPER{assem="adr `d0, "^Symbol.name(n)^"\n", src=[], dst=[r], jump=NONE}))

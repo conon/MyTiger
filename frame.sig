@@ -4,6 +4,10 @@ sig
     type registerStr = string
     val RV : Temp.temp (* return value *)
     val FP : Temp.temp (* frame pointer *)
+    val a1 : register
+    val a2 : register
+    val a3 : register
+    val a4 : register
     val K : int 
     val registers : register list
     val registersStr : registerStr list
