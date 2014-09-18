@@ -16,8 +16,9 @@ struct
                                                                       else ()
                                 | NONE => ()) (* suppress any errors on findescape analysis,
                                                  such errors will be catch be the type-checker *)
-          | FieldVar (var,s,_) => () 
-          | SubscriptVar (var,e,_) => ()
+          | FieldVar (var,s,_) => traverseVar(env, d, var)
+          | SubscriptVar (var,e,_) => (traverseVar(env, d, var);
+				       traverseExp(env, d, e))
     and traverseExp(env:escEnv, d:depth, s:Absyn.exp) : unit =
         case s of
             VarExp v => traverseVar(env,d,v)

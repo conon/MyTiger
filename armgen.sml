@@ -45,16 +45,29 @@ struct
             emit(A.OPER{assem="str `d0, [`s0, #"^i2s(i1*i2)^"]"^"\n",
                         dst=[munchExp e], src=[t], jump=NONE})
 
-            (* loading a record field on a register *)
+            (* loading a record field, array index on a register *)
           | munchStm(T.MOVE(T.TEMP t1, T.MEM(T.BINOP(T.PLUS,T.TEMP t2,T.BINOP(T.MUL,
                      T.CONST i1, T.CONST i2))))) =
             emit(A.MOVE{assem="ldr `d0, [`s0, #"^i2s(i1*i2)^"]"^"\n", src=t2,
                         dst=t1})
 
-            (* storing a variable in a record index *)
+            (* storing a variable in a record field, array index *)
           | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.CONST i)), e)) =
             emit(A.OPER{assem="str `s0, [`s1, #"^i2s(i)^"]"^"\n", src=[munchExp e, t],
                         dst=[], jump=NONE})
+
+	    (* store a variable to memory 
+          | munchStm(T.MOVE(T.TEMP t1, T.BINOP(T.PLUS, T.TEMP t2, T.CONST i))) =
+            emit(A.OPER{assem="str `s0, [`s1, #" ^ Int.toString(i) ^ "]" ^ "\n", src=[t1,t2], 
+			       dst=[], jump=NONE})
+*)
+(*
+	  | munchStm(T.MOVE(T.TEMP t, T.BINOP(T.PLUS, T.TEMP t2, T.CONST i))) =
+	    (case t2 of
+	        (Frame.a1) => emit(A.OPER{assem="str `s0, [fp, #" ^ Int.toString(i) ^ "]" ^ "\n", src=[t], 
+			dst=[], jump=NONE})
+             | _ => ())
+*)
 
             (* calling a function and storing the result on return value register *)
           | munchStm(T.MOVE(T.TEMP rv, T.CALL(T.NAME name,args))) =
@@ -80,8 +93,8 @@ struct
 
             (* storing expression to memory *)
           | munchStm(T.MOVE(T.MEM e1,e2)) =
-            emit(A.MOVE{assem="str `s0, [`d0]"^"\n", src=munchExp e2, 
-                        dst=munchExp e1})
+            emit(A.OPER{assem="str `s0, [`s1]"^"\n", src=[munchExp e2, munchExp e1], 
+                        dst=[], jump=NONE})
 
           | munchStm (T.MOVE(e1,e2)) =
             emit(A.MOVE{assem="ldr `d0, `s0\n", dst=munchExp e1, src=munchExp e2}) 
