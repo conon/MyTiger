@@ -1,0 +1,40 @@
+let
+    type linked_list = {data: int, link: linked_list}
+
+    function getNumber() : int =
+        let var s := (print("Give the number: "); getString())
+            var i := strToInt(s)
+        in i end
+
+    function makeList(l : linked_list) : linked_list =
+        let 
+            var n := getNumber()
+        in linked_list{data=n, link=l} end
+
+    function eval(l : linked_list, s : string) : linked_list =
+        let var eq := stringEqual("y",s)
+        in
+            if eq
+            then let var l := makeList(l)
+                     var s := ( 
+                                print("More numbers(y/n)?: "); 
+                                getString()
+                               )
+                     var e := eval(l,s)
+                     in e end
+            else l
+        end
+
+    function printlist(l: linked_list) =
+        if l = nil
+        then ()
+        else (
+                 print(itoa(l.data));
+                 print("\n");
+                 printlist(l.link)
+             )
+
+    var a := eval(nil,"y")
+in
+    printlist(a)
+end

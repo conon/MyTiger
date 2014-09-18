@@ -1,0 +1,20 @@
+let
+    function summation(num : int) : int =
+        if num = 0
+        then 0
+        else num + summation(num - 1)
+
+    function eval() : int =
+        let var snum := getString()
+            var n := strToInt(snum)
+            var res := summation(n)
+        in res end
+
+    var e := (print("Give a number to evaluate summation: "); eval())
+    var s := itoa(e)
+in
+(
+    print(concat("Result: ", s));
+    print("\n")
+)
+end

@@ -1,0 +1,14 @@
+let
+    type intArray = array of int
+    var s := (print("Give array index: "); getString())
+    var i := strToInt(s)
+    var ar := intArray[10] of 5
+in
+    (
+        print("Element in index ");
+        print(itoa(i));
+        print(": ");
+        print(itoa(ar[i]));
+        print("\n")
+    )
+end
