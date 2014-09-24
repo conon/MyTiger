@@ -1,0 +1,94 @@
+let
+    type db_linked_list = {left: db_linked_list, data: int, right: db_linked_list}
+
+    function getNumber() : int =
+        let var s := (print("Give the number: "); getString())
+            var i := strToInt(s)
+        in i end
+
+    function goToLast(l: db_linked_list) : db_linked_list =
+		if l.right = nil
+		then l
+		else goToLast(l.right)
+
+    function place_first(l: db_linked_list, newl: db_linked_list) : db_linked_list =
+    (
+        newl.right := l;
+        l.left := newl;
+        newl
+    )
+
+    function place_last(l: db_linked_list, newl: db_linked_list) : db_linked_list =
+    (
+        l.right := newl;
+        newl.left := l;
+        newl
+    )
+
+    function place_middle(l: db_linked_list, newl: db_linked_list) : db_linked_list =
+    let var rl := l.right
+    in
+    (
+        newl.left := l;
+        newl.right := l.right;
+        l.right := newl;
+        rl.left := newl;
+        newl
+    )
+    end
+
+    function testFirst(l: db_linked_list, newl: db_linked_list, n: int) : db_linked_list =
+        let var ll := l.data
+        in
+	        if ll > n
+	        then let var res := place_first(l, newl) in res end
+	        else let var res := place_middle(l, newl) in res end
+        end
+
+    function onlineInsertionSort(l: db_linked_list, newl: db_linked_list, n: int) : db_linked_list =
+        if l.left = nil
+        then testFirst(l, newl, n)
+        else if l.data > n
+        then onlineInsertionSort(l.left, newl, n)
+        else place_middle(l, newl)
+
+    function makeList(l : db_linked_list) : db_linked_list =
+        let 
+            var n := getNumber()
+            var newl := db_linked_list{left = nil, data = n, right = nil}
+        in 
+               if l = nil
+               then newl
+               else if l.data <= n
+               then let var res := place_last(l, newl) in res end
+               else let var res := onlineInsertionSort(l, newl, n) in res end
+        end
+
+    function eval(l : db_linked_list, s : string) : db_linked_list =
+        let var eq := stringEqual("y",s)
+        in
+            if eq
+            then let var l := makeList(l)
+                     var ll := goToLast(l)
+                     var s := ( 
+                                print("More numbers(y/n)?: "); 
+                                getString()
+                               )
+                     var e := eval(ll,s)
+                     in e end
+            else l
+        end
+
+    function printlist(l: db_linked_list) =
+        if l = nil
+        then ()
+        else (
+                 print(itoa(l.data));
+                 print("\n");
+                 printlist(l.left)
+             )
+
+    var a := eval(nil,"y")
+in
+    printlist(a)
+end
