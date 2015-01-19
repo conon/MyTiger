@@ -69,7 +69,7 @@ structure Main = struct
 				 (
                     withOpenFile (filename ^ ".s") (fn out => (app (emitproc out) frags));
 					OS.Process.system ("as -g " ^ filename ^ ".s" ^ " -o " ^ filename ^ ".o");
-					OS.Process.system ("gcc -g runtime.o " ^ filename ^ ".o -o " ^ filename)
+					OS.Process.system ("gcc -g runtime.o " ^ filename ^ ".o -o " ^ filename ^ ".exe")
 				 )
                  end
             else OS.Process.failure
