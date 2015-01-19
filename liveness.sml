@@ -11,7 +11,7 @@ sig
 
     val liveness : Flow.flowgraph -> Flow.Graph.node -> Temp.temp list (* node(block) -> live-out temps *)
 
-    val show : TextIO.outstream * igraph -> unit
+    val show : TextIO.outstream * Flow.Graph.node list -> unit
 
     val printliveouts : TextIO.outstream * Flow.Graph.node list * (Flow.Graph.node -> Temp.temp list)  -> unit
 end =
@@ -148,6 +148,7 @@ struct
 	    val (_,outtablesets) = livenessalgo(nodelist,usetable,deftable)
     in outtablesetstotemp outtablesets end
 
+(*
     fun show (out,igraph) =
         let val IGRAPH{graph=graph,tnode=t,gtemp=g,moves=mlst} = igraph
 	    val nodelist = IGraph.nodes graph
@@ -164,6 +165,24 @@ struct
 	        
 	    val _ = foldl printnode 0 nodelist 
 	in () end
+*)
+
+    fun show (out, nodelist) =
+        let fun printnode (node,count) =
+            let fun adjnodes node =
+		    (TextIO.output(out, (Int.toString count) ^ " ");
+		     count+1)
+		in
+	            (TextIO.output(out,"Node " ^ (Int.toString count) ^ "\n" ^
+		                    "Adjacent to nodes: " ); 
+		     foldl adjnodes 0 (IGraph.adj node);  
+                     TextIO.output(out,"\n");
+		     count+1)
+	        end
+
+           val _ = foldl printnode 0 nodelist
+       in () end
+          
 
     fun printliveouts(out,nodelist,nodetotemps) =
         let fun node n =

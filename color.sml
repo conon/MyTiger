@@ -47,7 +47,7 @@ struct
     fun mapColor (table,node) = 
         case Temp.Table.look(table,node) of
             SOME n => n
-          | NONE => (print "mapcolor "; ~1)
+          | NONE => ~1
     fun mapAlias (table,node) = 
         case Temp.Table.look(table,node) of
             SOME n => n
@@ -106,10 +106,10 @@ struct
 
 	    fun main (moveList,worklistMoves,adjList,degree,adjSet) =
 	    let val (flowgraph,nodes(* blocks *)) = MakeGraph.instrs2graph instrs
-            val _ = MakeGraph.printNodes (TextIO.stdOut,flowgraph)
+            (*val _ = MakeGraph.printNodes (TextIO.stdOut,flowgraph)*)
             val Flow.FGRAPH{control=fgraph,def=deftable,use=usetable,ismove=ismovetable} = flowgraph
             val liveOut = Liveness.liveness flowgraph
-            val _ = Liveness.printliveouts (TextIO.stdOut,nodes,liveOut)
+            (*val _ = Liveness.show (TextIO.stdOut,nodes)*)
             (*val _ = print(Int.toString(length nodes))
             val _ = app (fn x => print (Int.toString x)) (List.concat(mapping(usetable,hd nodes)))
             val _ = (print "HEU\n\n";print (Graph.printgraph(nodes)))*)
@@ -262,7 +262,7 @@ struct
             let fun chooseNode nodes =
                     case nodes of
                         n::ns => if mapDegree(degree,n) >= K
-                                 then (print "TRYING HARD!!!!\n";chooseNode(ns)) (* Try other node *)
+                                 then chooseNode(ns) (* Try other node *)
                                  else n
                       | nil => raise RegisterOverflow (* if spilling is needed give up *)
 
@@ -337,9 +337,7 @@ struct
         (*
         val _ = printSet("worklistMoves",initial')
         val _ = printTemptoSet("adjList",adjList,initial');
-        *)
         val _ = printTemptoInt("degree",degree,initial');
-        (*
         val _ = printTupleSet("adjSet",adjSet);
         val _ = printTemptoSet("moveList",moveList,initial');
         *)
@@ -396,7 +394,7 @@ struct
               else ()
            end
        (*val _ = checkAssignColors spilledNodes*)
-       val _ = printSet("spilledNodes",spilledNodes)
+       (*val _ = printSet("spilledNodes",spilledNodes)*)
        (*
        fun checkInitialColoredNodes (i,c) =
            case Set.compare(i,c) of

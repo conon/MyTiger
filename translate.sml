@@ -82,7 +82,7 @@ fun formals lev =
                                     f::fs => (lev,f)::aux(fs)
                                   | nil => nil
                              val acc = aux formals
-                             val _ = print("FORMALS(translate): "^Int.toString(length(acc))^"\n")
+                             (*val _ = print("FORMALS(translate): "^Int.toString(length(acc))^"\n")*)
                          in List.drop(acc,1) end (* drop the static link *)
       | StartLevel => (print "formals\n";raise StartLevelExc)
 

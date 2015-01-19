@@ -11,6 +11,15 @@ val commentsClosed = ref true
 val stringClosed = ref 0
 val str = ref ""
 
+fun esq_to_string esq =
+	let val e =
+			case esq of
+				"n" => #"\n"
+			  | "t" => #"\t"
+			  | "\\" => #"\\"
+			  | "\"" => #"\""
+	in String.str(e) end
+
 fun eof() =
     if not (!commentsClosed)
     then (ErrorMsg.error (!lineNum) ("unmatch comment"); Tokens.EOF(!lineNum,!lineNum))

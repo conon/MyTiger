@@ -230,7 +230,7 @@ fun transProg ast =
 				   val label' = Temp.namedlabel(Symbol.name(n))
 				   val lev' = Tr.newLevel {parent=lev, name=label',
 							   formals = formals'} 
-                   val _ = print("SEMANT: "^Symbol.name(label')^"\n")
+                   (*val _ = print("SEMANT: "^Symbol.name(label')^"\n")*)
 			       in 
                      (Symbol.enter(venv, n, Env.FunEntry{level=lev', label=label',
 								     formals = map #ty p, result = r}), levlist @ [lev']) 
@@ -271,43 +271,43 @@ fun transProg ast =
 		    {exp = Tr.constIntVar i, ty = Types.INT}
 		  | trexp (A.StringExp (s,pos)) =
 		    {exp = Tr.strVar(s), ty = Types.STRING}
-                  | trexp (A.NilExp) =
-                    {exp = Tr.nilVar (), ty = Types.NIL}
-                  | trexp (A.VarExp vr) =
-                    trvar(vr,lev)
-                  | trexp (A.BreakExp pos) =
-		    if !nested > 0
-		    then {exp=Tr.breakLoop breaklabel, ty = Types.UNIT}
-		    else (error pos "break should be inside while or for";
-                          {exp=Tr.dummy, ty = Types.UNIT})
-                  | trexp (A.SeqExp seqs) =
-                    let fun makeTree ((exp,_),lst) =
-                            trexp(exp)::lst
-                        val tr = foldr makeTree nil seqs
-                        fun canonicalize ({exp=e,ty=t},lst) =
-                            e::lst
-                        val trcan = foldr canonicalize nil tr
-                        val tree = Tr.makeExp trcan
-                        val {exp=_,ty=lastType} = List.last tr handle Empty => {exp=Tr.dummy, ty=Types.UNIT}
-                    in {exp=tree,ty=lastType} end
-                        
-                  | trexp (A.AssignExp{var, exp, pos}) =
-                    let val {exp=lval,ty= trty} = trvar(var,lev)
-                        val {exp=rval,ty= expty} = trexp(exp)
-                    in
-                        if checkEqual(trty,expty)
-                        then {exp = Tr.assign(lval,rval), ty = Types.UNIT}
-                        else (error pos "wrong type value assiged to variable";
-                              {exp=Tr.dummy, ty = Types.UNIT})
-                    end
-                  | trexp (A.CallExp{func, args, pos}) =
-                    let fun iter ((argtype,formaltype),exps) =
-                            let val {exp = e, ty = argtype'} = trexp(argtype)
-                            in
-                                if checkEqual(argtype', formaltype)
-                                then exps@[e]
-                                else (error pos "expression type does not match of declaration"; exps)
-                            end
+          | trexp (A.NilExp) =
+            {exp = Tr.nilVar (), ty = Types.NIL}
+          | trexp (A.VarExp vr) =
+             trvar(vr,lev)
+          | trexp (A.BreakExp pos) =
+		     if !nested > 0
+		     then {exp=Tr.breakLoop breaklabel, ty = Types.UNIT}
+		     else (error pos "break should be inside while or for";
+                  {exp=Tr.dummy, ty = Types.UNIT})
+		  | trexp (A.SeqExp seqs) =
+			let fun makeTree ((exp,_),lst) =
+					trexp(exp)::lst
+				val tr = foldr makeTree nil seqs
+				fun canonicalize ({exp=e,ty=t},lst) =
+					e::lst
+				val trcan = foldr canonicalize nil tr
+				val tree = Tr.makeExp trcan
+				val {exp=_,ty=lastType} = List.last tr handle Empty => {exp=Tr.dummy, ty=Types.UNIT}
+			in {exp=tree,ty=lastType} end
+				
+		  | trexp (A.AssignExp{var, exp, pos}) =
+			let val {exp=lval,ty= trty} = trvar(var,lev)
+				val {exp=rval,ty= expty} = trexp(exp)
+			in
+				if checkEqual(trty,expty)
+				then {exp = Tr.assign(lval,rval), ty = Types.UNIT}
+				else (error pos "wrong type value assiged to variable";
+					  {exp=Tr.dummy, ty = Types.UNIT})
+			end
+		  | trexp (A.CallExp{func, args, pos}) =
+			let fun iter ((argtype,formaltype),exps) =
+					let val {exp = e, ty = argtype'} = trexp(argtype)
+					in
+						if checkEqual(argtype', formaltype)
+						then exps@[e]
+						else (error pos "expression type does not match of declaration"; exps)
+					end
                     in
                         (case Symbol.look(venv, func) of
                              SOME(Env.FunEntry{level, label, formals, result}) => 
@@ -410,7 +410,7 @@ fun transProg ast =
                              else (error pos "if expression should produce no value"; {exp=Tr.dummy, ty = Types.UNIT})
                         else (error pos "if statement should produce an integer value"; {exp=Tr.dummy, ty = Types.UNIT})
 	            end
-                  | trexp (A.WhileExp{test, body, pos}) =
+		  | trexp (A.WhileExp{test, body, pos}) =
 		    let val {exp=et, ty = test'} = trexp(test)
 		        val breaklabel' = Tr.initLoop
 		        val {exp=eb, ty = body'} = (nested := !nested + 1; 

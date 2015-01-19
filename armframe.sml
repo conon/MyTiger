@@ -65,10 +65,10 @@ struct
         let fun formalsiter (fs,offset,counter,args) =
 	       case (fs,args) of
 	           (f::fs,a::args) => (case f of
-                         true => (print "INFRAME1_NEW\n";InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter,a::args))
-                       | false => (print "INREG_NEW\n";InReg (a) :: formalsiter(fs,offset,counter+1,args)))
+                         true => InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter,a::args)
+                       | false => InReg (a) :: formalsiter(fs,offset,counter+1,args))
              | (nil,nil) => nil
-             | (f::fs,nil) => (print "INFRAME2_NEW\n";InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter+1,nil))
+             | (f::fs,nil) => InFrame (offset * wordSize) :: formalsiter(fs,offset+1,counter+1,nil)
              | (nil,args) => nil
         in
             (*app (fn a => case a of 
@@ -84,8 +84,8 @@ struct
     fun allocLocal {name =_, formals =_, locals = l} var =
     (* in case of escaping locals goes to lower addresses *)
 	        case var of
-                false => (print "INREG_ALLOC\n";InReg (Temp.newtemp()))
-              | true => (print "INFRAME_ALLOC\n";l := !l+1; InFrame (~(!l) * wordSize - fpsub))
+                false => InReg (Temp.newtemp())
+              | true => (l := !l+1; InFrame (~(!l) * wordSize - fpsub))
 
     val esc : (Temp.label * int list * int) list ref = ref [(Temp.namedlabel("_start"),nil,0)]
 
@@ -99,8 +99,8 @@ struct
 
     fun exp facc fp =
         case facc of
-            InFrame k => (print "INFRAME_EXP\n";Tree.MEM(Tree.BINOP(Tree.PLUS, fp, Tree.CONST k)))
-          | InReg t => (print "INREG_EXP\n";Tree.TEMP t)
+            InFrame k => Tree.MEM(Tree.BINOP(Tree.PLUS, fp, Tree.CONST k))
+          | InReg t => Tree.TEMP t
 
     fun externalCall (s,args) =
         let val _ = if K > List.length(args) 
@@ -119,16 +119,16 @@ struct
             val n = name callingframe
             val locals = case parentframe of
                              {locals,...} : frame => !locals
-            val _ = print("LENGTH ARGS :"^Int.toString(length(cfls))^"\n")
-            val _ = print("LENGTH LOCALS :"^Int.toString(locals)^"\n")
+            (*val _ = print("LENGTH ARGS :"^Int.toString(length(cfls))^"\n")*)
+            (*val _ = print("LENGTH LOCALS :"^Int.toString(locals)^"\n")*)
             fun iter (fs,i) =
                case fs of
-                   f::fs =>(print("TIMES: "^Int.toString(i)^"\n"); (case f of
+                   f::fs =>(case f of
                                  InReg r => iter(fs,i+1)
                                | InFrame m => if i = 0
                                               then iter(fs,i+1) (* ignore static link *)
                                               else (print("find: "^Int.toString(i)^"\n");
-                                                    (i-1)::iter(fs,i+1))))
+                                                    (i-1)::iter(fs,i+1)))
                  | nil => nil
             val e = iter(cfls,0)
         in esc := (n,e,locals)::(!esc) end
@@ -146,8 +146,10 @@ struct
     fun procEntryExit3(fr as {name=n,formals=f,locals=l},instrs) =
         let val (_,numlocals) = getEsc n
             val numlocals = numlocals * wordSize + fpsub
+(*
             val _ = print("NAME: "^Symbol.name(n)^"\n")
             val _ = print("NUMLOCALS: "^Int.toString(numlocals)^"\n")
+*)
             val n' = Symbol.name(n)
             val startProlog = ".global tigermain\n\n"^
                               ".text\n\n"^
@@ -180,6 +182,8 @@ struct
 
     fun string (lab,s) = 
         let val len = Int.toString(String.size s)
+			val _ = print("Len of string: " ^ len ^ "\n")
+			val _ = print("NAME:" ^ s ^ "\n")
         in
             Symbol.name(lab)^":"^"\n"^
             ".word "^len^"\n"^

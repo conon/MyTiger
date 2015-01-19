@@ -8,13 +8,13 @@ structure Main = struct
 
    fun emitproc out (F.PROC{body,frame}) =
      let val _ = print ("emit " ^ Symbol.name(Frame.name frame) ^ "\n")
-         (*val _ = Printtree.printtree(out,body);*)
+         val _ = Printtree.printtree(out,body)
 	     val stms = Canon.linearize body
          (*val _ = app (fn s => Printtree.printtree(out,s)) stms*)
          (*val (stms',_) = Canon.basicBlocks stms*)
          val stms'' = Canon.traceSchedule(Canon.basicBlocks stms)
          (*val stms' = List.concat(stms')*)
-         val _ = app (fn s => Printtree.printtree(out,s)) stms''
+         (* val _ = app (fn s => Printtree.printtree(out,s)) stms'' *)
 	     val instrs = List.concat(map (Arm.codegen frame) stms'')
          (*val _ = TextIO.output(out,"\n\n")
          val (flowgraph,nodes) = MakeGraph.instrs2graph instrs

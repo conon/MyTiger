@@ -28,46 +28,25 @@ let
 
 
 /*
-    function binary_search(ar: intArray, key: int) : int =
-        let var lo := 0
-            var hi := 10 - 1
-        in 
-        (
-            while (lo <= hi) do
-            let var mid := lo + (10 - lo) / 2
-            in 
-                if (key < ar[mid])
-                then hi := mid - 1
-                else if (key > ar[mid])
-                then lo := mid + 1
-                else ()
-            end;
-            5
-	)
-        end
-*/
-
     function midpoint(imin: int, imax: int) : int =
         imin + (imax - imin) / 2
-
-        
 
     function binary_search(ar: intArray, key: int, imin: int, imax: int) : int =
         if (imax < imin)
         then -1
-        else (
-             let var imid := midpoint(imin, imax)
-                 var arr := ar[imid]
-             in
-             if (arr > key)
-             then binary_search(ar, key, imin, imid-1)
-             else imid
+        else let var imid := midpoint(imin, imax)
+             in 
+                if (ar[imid] > key)
+                then binary_search(ar, key, imin, imid-1)
+                else if (ar[imid] < key)
+                then binary_search(ar, key, imid+1, imax)
+                else imid
              end
-             )
+*/
 
-   var arr := inittArray(ar, 9)
-   var key := 10
-   var res := linear_search(ar, 9, key)
+    var arr := inittArray(ar, 9)
+    var key := 10
+    var res := linear_search(ar, 9, key)
 in
     if res >= 0
     then (

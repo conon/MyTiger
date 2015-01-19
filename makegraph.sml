@@ -54,6 +54,7 @@ fun instrs2graph instrlist =
                       SOME jl => jl
                     | NONE => nil
               val jumplist = fetchJumplist(block)
+              (*val _ = app (fn n => print("NONE: " ^ Graph.nodename(block) ^ " -> " ^ Graph.nodename(fetchBlock(n)) ^ "\n")) jumplist*)
          in app (fn jumplabel => Graph.mk_edge{from=block,to=fetchBlock jumplabel}) jumplist end
 
      (* adjust edges *)
