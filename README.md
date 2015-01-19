@@ -2,7 +2,7 @@ MyTiger
 =======
 
 MyTiger is a compiler which implements the Tiger programming language. 
-Tiger was developed by Andrew Appel for his "Modern Compiler Implementation in ML".
+Tiger was developed by Andrew Appel for his book "Modern Compiler Implementation in ML".
 I am mainly using MyTiger as a learning and experimenting tool. 
 
 
@@ -10,11 +10,11 @@ I am mainly using MyTiger as a learning and experimenting tool.
 
 * Makes a flawless lexical, syntactic and semantic analysis
  
- * Implicitly produces intermediate representation language (defined in the book)
+* Implicitly produces intermediate representation language (defined in the book)
 
- * Makes the classic liveness analysis and register allocation
+* Makes the classic liveness analysis and register allocation
 
- * Produces ARM assembly for ARM v7 processors
+* Produces ARM assembly for ARM v7 processors
 
 
 ## Known issues
