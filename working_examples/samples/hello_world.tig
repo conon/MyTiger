@@ -1,0 +1,8 @@
+/* Example 1 */
+/* val print : string -> unit */
+
+let
+in
+	print("Hello World\n")
+end
+

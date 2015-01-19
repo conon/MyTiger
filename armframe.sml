@@ -182,8 +182,10 @@ struct
 
     fun string (lab,s) = 
         let val len = Int.toString(String.size s)
+			(*
 			val _ = print("Len of string: " ^ len ^ "\n")
 			val _ = print("NAME:" ^ s ^ "\n")
+			*)
         in
             Symbol.name(lab)^":"^"\n"^
             ".word "^len^"\n"^

@@ -1,0 +1,13 @@
+/* Example 3 */
+let
+	var a := 4
+	var b := 5
+	var c := 6
+in
+	if a > 3
+	then b >= 5
+	else if c = 6
+	then print("c is 6\n")
+	else print("c is not 6\n") 
+end
+

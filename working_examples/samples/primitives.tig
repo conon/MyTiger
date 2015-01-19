@@ -1,0 +1,14 @@
+/* Example 2 */
+/* 
+   print : string -> unit 
+   concat : string * string -> string
+*/
+let
+	var a := 5
+	var b := "Hello"
+	var c : int := 3
+	var d : string := " World"
+	var e : string := concat(b, d)
+in
+	print(e)
+end

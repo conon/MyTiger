@@ -43,9 +43,8 @@ struct
 			(* store a variable in a record field  e.g record.field := 7 *)
           | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.BINOP(T.MUL,T.CONST i1,
                      T.CONST i2))), e)) =
-			(print("FIRST\n");
             emit(A.OPER{assem="str `d0, [`s0, #"^i2s(i1*i2)^"]"^"\n",
-                        dst=[munchExp e], src=[t], jump=NONE}))
+                        dst=[munchExp e], src=[t], jump=NONE})
 
             (* loading a record field, array index on a register *)
           | munchStm(T.MOVE(T.TEMP t1, T.MEM(T.BINOP(T.PLUS,T.TEMP t2,T.BINOP(T.MUL,
@@ -55,9 +54,8 @@ struct
 
             (* storing a variable in a record field, array index *)
           | munchStm(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP t,T.CONST i)), e)) =
-			(print("SECOND\n");
             emit(A.OPER{assem="str `s0, [`s1, #"^i2s(i)^"]"^"\n", src=[munchExp e, t],
-                        dst=[], jump=NONE}))
+                        dst=[], jump=NONE})
 
 	    (* store a variable to memory 
           | munchStm(T.MOVE(T.TEMP t1, T.BINOP(T.PLUS, T.TEMP t2, T.CONST i))) =

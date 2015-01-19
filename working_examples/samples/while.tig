@@ -1,0 +1,14 @@
+/* Example 5 */
+/* getString : unit -> string
+   strToInt : string -> int */
+let
+	var str := ""
+	var test := 0
+in
+	while test < 10 do
+	(
+		str := getString()
+		test := strToInt(str)
+	)
+end
+		

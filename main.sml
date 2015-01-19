@@ -66,9 +66,13 @@ structure Main = struct
             if not (!ErrorMsg.anyErrors)
             then let val frags = (FindEscape.findEscape absyn; Semant.transProg absyn)  
                  in 
-                    withOpenFile (filename ^ ".s") (fn out => (app (emitproc out) frags))
+				 (
+                    withOpenFile (filename ^ ".s") (fn out => (app (emitproc out) frags));
+					OS.Process.system ("as -g " ^ filename ^ ".s" ^ " -o " ^ filename ^ ".o");
+					OS.Process.system ("gcc -g runtime.o " ^ filename ^ ".o -o " ^ filename)
+				 )
                  end
-            else ()
+            else OS.Process.failure
        end
 
 end

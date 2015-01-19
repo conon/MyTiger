@@ -1,0 +1,11 @@
+/* Example 4 */
+/* stringEqual : string * string -> int */
+
+let
+	var s1 := "hello"
+	var s2 := "hello"
+in
+	if stringEqual(s1,s2)
+	then print("Strings are equal")
+	else print("Strings are not equal")
+end
